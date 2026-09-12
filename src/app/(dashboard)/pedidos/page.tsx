@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { api, ApiError } from "@/lib/apiClient";
 import { useMarcas } from "@/components/MarcasProvider";
 import { useAuth } from "@/components/AuthProvider";
@@ -12,7 +13,7 @@ import { Select } from "@/components/ui/Input";
 import { money } from "@/lib/format";
 
 interface StockBajoItem {
-  id: number; codigo: string; nombre: string | null; marcaNombre: string | null;
+  id: number; codigo: string; nombre: string | null; marcaId: number | null; marcaNombre: string | null;
   stockActual: number | null; stockMinimo: number | null; precioPublico: number | null;
 }
 interface PedidoResumen { id: number; fecha: string; nota: string | null; nItems: number; valorTotal: number; }
@@ -23,10 +24,22 @@ interface PedidoItem {
 }
 
 export default function PedidosPage() {
+  return (
+    <Suspense>
+      <PedidosPageInner />
+    </Suspense>
+  );
+}
+
+function PedidosPageInner() {
+  const searchParams = useSearchParams();
   const { marcas } = useMarcas();
   const { requirePermiso } = useAuth();
   const toast = useToast();
-  const [marcaId, setMarcaId] = useState<number | undefined>();
+  const [marcaId, setMarcaId] = useState<number | undefined>(() => {
+    const v = Number(searchParams.get("marcaId"));
+    return v > 0 ? v : undefined;
+  });
   const [stockBajo, setStockBajo] = useState<StockBajoItem[]>([]);
   const [pedidos, setPedidos] = useState<PedidoResumen[]>([]);
   const [generando, setGenerando] = useState(false);

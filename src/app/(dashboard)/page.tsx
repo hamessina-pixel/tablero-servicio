@@ -9,7 +9,7 @@ import { StatTile } from "@/components/ui/StatTile";
 import { BarChart } from "@/components/ui/BarChart";
 import { Button } from "@/components/ui/Button";
 import { money, compactNumber, number } from "@/lib/format";
-import type { ResumenDashboard } from "@/domain/types";
+import type { ResumenDashboard, ResumenPorModelo } from "@/domain/types";
 
 const TONO = {
   azul: "var(--brand)",
@@ -23,10 +23,24 @@ export default function InicioPage() {
   const router = useRouter();
   const { colorMarca, cargando: cargandoMarcas } = useMarcas();
   const [r, setR] = useState<ResumenDashboard | null>(null);
+  const [planes, setPlanes] = useState<ResumenPorModelo[]>([]);
 
   useEffect(() => {
     api.dashboard.resumen().then(setR);
+    api.planes.resumen().then(setPlanes);
   }, []);
+
+  const costoKmPorMarca = (() => {
+    const mapa = new Map<string, { suma: number; n: number }>();
+    for (const p of planes) {
+      const e = mapa.get(p.marca) ?? { suma: 0, n: 0 };
+      e.suma += p.costoKm; e.n += 1;
+      mapa.set(p.marca, e);
+    }
+    return [...mapa.entries()]
+      .map(([marca, e]) => ({ marca, promedio: e.n ? e.suma / e.n : 0 }))
+      .sort((a, b) => b.promedio - a.promedio);
+  })();
 
   if (!r || cargandoMarcas) {
     return <div className="py-16 text-center text-[13px] text-[var(--text-muted)]">Cargando…</div>;
@@ -74,6 +88,19 @@ export default function InicioPage() {
           />
         </Card>
       </div>
+
+      <Card>
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <CardTitle>Comparador multimarca</CardTitle>
+            <p className="text-[12px] text-[var(--text-muted)]">Costo promedio de mantenimiento por km, según los planes cargados de cada marca</p>
+          </div>
+          <Button tamano="sm" onClick={() => router.push("/cotizador?tab=comparador")}>Ver detalle completo</Button>
+        </div>
+        <BarChart
+          rows={costoKmPorMarca.map((x) => ({ label: x.marca, value: x.promedio, color: colorMarca(x.marca), valueLabel: money(x.promedio) }))}
+        />
+      </Card>
 
       <Card>
         <CardTitle>Modelos por marca</CardTitle>

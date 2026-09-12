@@ -9,6 +9,7 @@
 @theme {
   --font-sans: var(--font-jakarta), var(--font-inter), "Segoe UI", system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", monospace;
+  --font-display: var(--font-big-shoulders), var(--font-jakarta), system-ui, sans-serif;
 }
 
 :root {
@@ -62,6 +63,10 @@
   --t-fast: 120ms;
   --t: 200ms;
   --t-slow: 420ms;
+
+  /* Espectro de marcas: fusión de los 5 colores reales (marcas.color en la
+     base). Fijo entre temas claro/oscuro porque es identidad, no superficie. */
+  --brand-spectrum: linear-gradient(90deg, #0072ce, #0e9f6e, #b5121b, #da291c, #00205b);
 
   /* Donut del cotizador — colores propios, validados aparte para contraste. */
   --cz-slice-rep: #0072ce;
@@ -171,4 +176,18 @@ body {
 
 @media print {
   .no-print { display: none !important; }
+}
+
+/* Modo taller: botones, inputs y filas más grandes para usar el panel desde
+   una tablet en el box, con dedos o guantes de trabajo. */
+html[data-density="taller"] button,
+html[data-density="taller"] input,
+html[data-density="taller"] select {
+  min-height: 44px !important;
+  font-size: 15px !important;
+}
+html[data-density="taller"] table td,
+html[data-density="taller"] table th {
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
 }

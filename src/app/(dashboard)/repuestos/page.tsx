@@ -47,7 +47,7 @@ function RepuestosPageInner() {
 
   const [marcaId, setMarcaId] = useState<number | undefined>();
   const [categoria, setCategoria] = useState("");
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(searchParams.get("q") ?? "");
   const [stockBajo, setStockBajo] = useState(searchParams.get("stockBajo") === "1");
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<(Repuesto & { marcaNombre: string | null })[]>([]);

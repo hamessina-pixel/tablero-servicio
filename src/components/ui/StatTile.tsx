@@ -38,7 +38,7 @@ export function StatTile({
         {icon}
       </div>
       <div className="text-[11.5px] font-semibold tracking-[.01em] text-[var(--text-secondary)]">{label}</div>
-      <div className={`font-extrabold leading-[1.1] text-[var(--text-primary)] ${largo ? "text-[23px]" : "text-[31px]"}`}>
+      <div className={`font-[family-name:var(--font-display)] font-extrabold leading-[1.05] tracking-[.01em] text-[var(--text-primary)] ${largo ? "text-[25px]" : "text-[33px]"}`}>
         {value}
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/apiClient";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -11,7 +12,16 @@ import type { Sustitucion } from "@/domain/types";
 const CLASES: Record<string, string> = { S: "Sustitución", A: "Alternativa" };
 
 export default function SustitucionesPage() {
-  const [q, setQ] = useState("");
+  return (
+    <Suspense>
+      <SustitucionesPageInner />
+    </Suspense>
+  );
+}
+
+function SustitucionesPageInner() {
+  const searchParams = useSearchParams();
+  const [q, setQ] = useState(searchParams.get("q") ?? "");
   const [marcaId, setMarcaId] = useState<number | undefined>();
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<(Sustitucion & { marcaNombre: string | null })[]>([]);

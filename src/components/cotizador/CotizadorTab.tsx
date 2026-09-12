@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/apiClient";
+import { api, ApiError } from "@/lib/apiClient";
 import { useMarcas } from "@/components/MarcasProvider";
 import { useToast } from "@/components/Toast";
-import { Select } from "@/components/ui/Input";
+import { Select, Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 import { PlanDetalle } from "@/components/cotizador/PlanDetalle";
 import { useModelosDeMarca, usePlanesDeModelo } from "@/components/cotizador/hooks";
 import type { PlanConDetalle } from "@/domain/types";
@@ -33,6 +34,10 @@ export function CotizadorTab({
   const [plan, setPlan] = useState<PlanConDetalle | null>(null);
   const [lub, setLub] = useState<Awaited<ReturnType<typeof api.lubricacion.deModelo>> | null>(null);
   const [cargando, setCargando] = useState(false);
+  const [mostrarGuardar, setMostrarGuardar] = useState(false);
+  const [patente, setPatente] = useState("");
+  const [cliente, setCliente] = useState("");
+  const [guardando, setGuardando] = useState(false);
 
   const cotizables = marcasCotizables();
   const sinPlanes = marcasSinPlanes();
@@ -52,8 +57,15 @@ export function CotizadorTab({
     return () => { vivo = false; };
   }, [seleccion.modeloId, plan]);
 
-  function guardarHistorial() {
+  function abrirGuardar() {
     if (!plan || !seleccion.marcaId || !seleccion.modeloId) return;
+    setPatente(""); setCliente(""); setMostrarGuardar(true);
+  }
+
+  async function confirmarGuardar() {
+    if (!plan || !seleccion.marcaId || !seleccion.modeloId) return;
+    const total = adj(plan.costoTotal ?? plan.precioSugerido ?? 0);
+    const pvp = plan.precioSugerido != null ? adj(plan.precioSugerido) : null;
     try {
       const historial = JSON.parse(localStorage.getItem(HISTORIAL_KEY) || "[]");
       historial.unshift({
@@ -62,13 +74,26 @@ export function CotizadorTab({
         marcaId: seleccion.marcaId, modeloId: seleccion.modeloId, planId: plan.id,
         marca: plan.marcaNombre, modelo: plan.modeloNombre, km: plan.kmIntervalo,
         fecha: new Date().toLocaleDateString("es-AR"),
-        total: adj(plan.costoTotal ?? plan.precioSugerido ?? 0),
-        pvp: plan.precioSugerido != null ? adj(plan.precioSugerido) : null,
+        total, pvp,
       });
       localStorage.setItem(HISTORIAL_KEY, JSON.stringify(historial.slice(0, 50)));
+    } catch {}
+
+    setGuardando(true);
+    try {
+      await api.cotizacionesGuardadas.guardar({
+        marcaId: seleccion.marcaId, modeloId: seleccion.modeloId, planId: plan.id,
+        marcaNombre: plan.marcaNombre, modeloNombre: plan.modeloNombre, km: plan.kmIntervalo,
+        patente: patente.trim() || undefined, cliente: cliente.trim() || undefined,
+        total, pvp,
+      });
       toast("Guardado en el historial", "success");
-    } catch {
-      toast("No se pudo guardar en el historial", "error");
+      setMostrarGuardar(false);
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Se guardó localmente, pero no en el servidor", "error");
+      setMostrarGuardar(false);
+    } finally {
+      setGuardando(false);
     }
   }
 
@@ -137,12 +162,38 @@ export function CotizadorTab({
           <p className="text-[13px] text-[var(--text-secondary)]">
             {plan.marcaNombre} {plan.modeloNombre} · {Math.round(plan.kmIntervalo / 1000)}.000 km
           </p>
-          <PlanDetalle plan={plan} marcaNombre={plan.marcaNombre} lub={lub} adj={adj} onGuardarHistorial={guardarHistorial} />
+          <PlanDetalle plan={plan} marcaNombre={plan.marcaNombre} lub={lub} adj={adj} onGuardarHistorial={abrirGuardar} />
         </>
       )}
 
       {!plan && !cargando && seleccion.modeloId && !seleccion.planId && (
         <p className="text-[13px] text-[var(--text-muted)]">Elegí un kilometraje para ver la cotización.</p>
+      )}
+
+      {mostrarGuardar && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[3px]"
+          onClick={(e) => { if (e.target === e.currentTarget) setMostrarGuardar(false); }}
+        >
+          <div className="w-full max-w-[360px] rounded-[var(--radius-lg)] bg-[var(--surface-raised)] p-6 shadow-[var(--shadow-lg)]">
+            <h2 className="mb-1 text-lg font-bold">Guardar en historial</h2>
+            <p className="mb-4 text-[13px] text-[var(--text-secondary)]">
+              Patente y cliente son opcionales, pero permiten volver a encontrar esta cotización desde cualquier equipo.
+            </p>
+            <label className="mb-3 block text-[12.5px] font-semibold text-[var(--text-secondary)]">
+              Patente
+              <Input className="mt-1" value={patente} onChange={(e) => setPatente(e.target.value)} placeholder="AB123CD" autoFocus />
+            </label>
+            <label className="mb-4 block text-[12.5px] font-semibold text-[var(--text-secondary)]">
+              Cliente
+              <Input className="mt-1" value={cliente} onChange={(e) => setCliente(e.target.value)} placeholder="Nombre y apellido" />
+            </label>
+            <div className="flex justify-end gap-2">
+              <Button onClick={() => setMostrarGuardar(false)}>Cancelar</Button>
+              <Button variante="primary" disabled={guardando} onClick={confirmarGuardar}>Guardar</Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

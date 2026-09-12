@@ -93,6 +93,19 @@ export const api = {
       ),
     marcas: () => get<{ marcaId: number | null; nombre: string; total: number }[]>("/api/sustituciones/marcas"),
   },
+  cotizacionesGuardadas: {
+    buscar: (q?: string) =>
+      get<{
+        id: number; marcaId: number; modeloId: number; planId: number;
+        marcaNombre: string; modeloNombre: string; km: number;
+        patente: string | null; cliente: string | null; total: number; pvp: number | null;
+        creadoPorId: number | null; creadoEn: string;
+      }[]>(`/api/cotizaciones-guardadas${qs({ q })}`),
+    guardar: (datos: {
+      marcaId: number; modeloId: number; planId: number; marcaNombre: string; modeloNombre: string; km: number;
+      patente?: string; cliente?: string; total: number; pvp?: number | null;
+    }) => post("/api/cotizaciones-guardadas", datos),
+  },
   pedidos: {
     listar: () => get("/api/pedidos"),
     stockBajo: (marcaId?: number) => get(`/api/pedidos/stock-bajo${qs({ marcaId })}`),

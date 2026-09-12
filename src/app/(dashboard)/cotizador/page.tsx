@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMarcas } from "@/components/MarcasProvider";
 import { BrandTag } from "@/components/ui/BrandTag";
 import { Input } from "@/components/ui/Input";
@@ -25,8 +26,18 @@ const TABS = [
 type TabId = (typeof TABS)[number]["id"];
 
 export default function CotizadorPage() {
+  return (
+    <Suspense>
+      <CotizadorPageInner />
+    </Suspense>
+  );
+}
+
+function CotizadorPageInner() {
+  const searchParams = useSearchParams();
   const { marcas } = useMarcas();
-  const [tab, setTab] = useState<TabId>("cotizador");
+  const tabInicial = TABS.find((t) => t.id === searchParams.get("tab"))?.id ?? "cotizador";
+  const [tab, setTab] = useState<TabId>(tabInicial);
   const { pct, setPct, adj } = useAjuste();
   const [seleccion, setSeleccion] = useState<SeleccionCotizador>({});
 

@@ -28,6 +28,7 @@ export function Sidebar() {
       className="no-print sticky top-0 flex h-screen w-64 shrink-0 flex-col gap-6 overflow-y-auto p-5 text-[13.5px]"
       style={{ background: `linear-gradient(180deg, var(--sidebar-bg), var(--sidebar-bg-2))` }}
     >
+      <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: "var(--brand-spectrum)" }} />
       <div className="flex items-center gap-2 px-1">
         <span
           className="h-2.5 w-2.5 rounded-full"
@@ -35,6 +36,17 @@ export function Sidebar() {
         />
         <span className="text-[15px] font-extrabold text-[var(--sidebar-ink-active)]">Panel de Servicio</span>
       </div>
+
+      <button
+        type="button"
+        onClick={() => window.dispatchEvent(new Event("abrir-busqueda"))}
+        className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-white/10 px-2.5 py-2 text-[12.5px]
+                   text-[var(--sidebar-ink)] transition-colors hover:bg-white/5"
+      >
+        <span aria-hidden>🔍</span>
+        Buscar…
+        <kbd className="ml-auto rounded-[5px] border border-white/15 px-1.5 py-0.5 text-[10px] opacity-70">Ctrl K</kbd>
+      </button>
 
       <nav className="flex flex-1 flex-col gap-5">
         {GRUPOS.map((grupo) => (
@@ -58,7 +70,7 @@ export function Sidebar() {
                   >
                     {activo && (
                       <span className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full"
-                            style={{ background: "var(--brand)" }} />
+                            style={{ background: "var(--brand-spectrum)" }} />
                     )}
                     <span aria-hidden>{item.icon}</span>
                     {item.label}

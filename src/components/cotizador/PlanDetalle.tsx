@@ -124,7 +124,12 @@ export function PlanDetalle({
         </Card>
         <BloqueLubricacion lub={lub} />
         <TotalRow label="Precio del service al público" valor={money(adj(plan.precioSugerido))} />
-        <Acciones onGuardar={onGuardarHistorial} onImprimir={imprimir} onExportar={() => exportarExcelCotizacion(plan, marcaNombre, adj)} />
+        <Acciones
+          onGuardar={onGuardarHistorial}
+          onImprimir={imprimir}
+          onExportar={() => exportarExcelCotizacion(plan, marcaNombre, adj)}
+          onEnviarWhatsApp={() => window.open(`https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp(plan, marcaNombre, money(adj(plan.precioSugerido))))}`, "_blank")}
+        />
       </div>
     );
   }
@@ -230,7 +235,15 @@ export function PlanDetalle({
             valor={money(precioPublicado != null ? precioPublicado : adj(plan.precioSugerido))}
           />
         )}
-        <Acciones onGuardar={onGuardarHistorial} onImprimir={imprimir} onExportar={() => exportarExcelCotizacion(plan, marcaNombre, adj)} />
+        <Acciones
+          onGuardar={onGuardarHistorial}
+          onImprimir={imprimir}
+          onExportar={() => exportarExcelCotizacion(plan, marcaNombre, adj)}
+          onEnviarWhatsApp={noPrice ? undefined : () => window.open(
+            `https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp(plan, marcaNombre, money(precioPublicado != null ? precioPublicado : adj(plan.precioSugerido))))}`,
+            "_blank",
+          )}
+        />
       </div>
     );
   }
@@ -273,7 +286,15 @@ export function PlanDetalle({
       <BloqueLubricacion lub={lub} />
       <TotalRow label="Costo total del servicio" valor={money(crep + cflu + cmo)} />
       {plan.precioSugerido != null && <TotalRow label="Precio sugerido al público" valor={money(adj(plan.precioSugerido))} />}
-      <Acciones onGuardar={onGuardarHistorial} onImprimir={imprimir} onExportar={() => exportarExcelCotizacion(plan, marcaNombre, adj)} />
+      <Acciones
+        onGuardar={onGuardarHistorial}
+        onImprimir={imprimir}
+        onExportar={() => exportarExcelCotizacion(plan, marcaNombre, adj)}
+        onEnviarWhatsApp={() => window.open(
+          `https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp(plan, marcaNombre, plan.precioSugerido != null ? money(adj(plan.precioSugerido)) : money(crep + cflu + cmo)))}`,
+          "_blank",
+        )}
+      />
     </div>
   );
 }
@@ -412,17 +433,34 @@ function exportarExcelCotizacion(
   });
 }
 
+function mensajeWhatsApp(plan: PlanConDetalle, marcaNombre: string, precioTexto: string): string {
+  const lineas = [
+    `*Cotización de mantenimiento*`,
+    `${marcaNombre} ${plan.modeloNombre} · ${Math.round(plan.kmIntervalo / 1000)}.000 km`,
+    "",
+  ];
+  if (plan.checklist.length) {
+    lineas.push("Incluye:");
+    for (const c of plan.checklist.slice(0, 10)) lineas.push(`• ${c.item}`);
+    lineas.push("");
+  }
+  lineas.push(`*Precio: ${precioTexto}*`);
+  return lineas.join("\n");
+}
+
 function Acciones({
-  onGuardar, onImprimir, onExportar,
+  onGuardar, onImprimir, onExportar, onEnviarWhatsApp,
 }: {
   onGuardar?: () => void;
   onImprimir: () => void;
   onExportar?: () => void;
+  onEnviarWhatsApp?: () => void;
 }) {
   return (
     <div className="no-print flex flex-wrap gap-2">
       {onGuardar && <Button onClick={onGuardar}>Guardar en historial</Button>}
       {onExportar && <Button onClick={onExportar}>Exportar a Excel</Button>}
+      {onEnviarWhatsApp && <Button onClick={onEnviarWhatsApp}>Enviar por WhatsApp</Button>}
       <Button onClick={onImprimir}>Imprimir / PDF</Button>
     </div>
   );

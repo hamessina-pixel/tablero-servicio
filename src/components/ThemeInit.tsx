@@ -13,6 +13,7 @@ export function ThemeInit() {
     try {
       const t = localStorage.getItem("theme");
       if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+      if (localStorage.getItem("densidad") === "taller") document.documentElement.setAttribute("data-density", "taller");
     } catch {}
   }, []);
   return null;

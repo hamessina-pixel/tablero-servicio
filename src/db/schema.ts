@@ -202,6 +202,31 @@ export const pedidoItems = pgTable("pedido_items", {
 }));
 
 // ---------------------------------------------------------------------------
+// Cotizaciones guardadas: historial buscable por patente o cliente (no solo
+// el localStorage del navegador de quien cotizó).
+// ---------------------------------------------------------------------------
+
+export const cotizacionesGuardadas = pgTable("cotizaciones_guardadas", {
+  id: serial("id").primaryKey(),
+  marcaId: integer("marca_id").notNull().references(() => marcas.id),
+  modeloId: integer("modelo_id").notNull().references(() => modelos.id),
+  planId: integer("plan_id").notNull().references(() => planesMantenimiento.id),
+  marcaNombre: text("marca_nombre").notNull(),
+  modeloNombre: text("modelo_nombre").notNull(),
+  km: integer("km").notNull(),
+  patente: text("patente"),
+  cliente: text("cliente"),
+  total: doublePrecision("total").notNull(),
+  pvp: doublePrecision("pvp"),
+  creadoPorId: integer("creado_por_id").references(() => usuarios.id),
+  creadoEn: text("creado_en").notNull(),
+}, (t) => ({
+  patenteIdx: index("idx_cotizaciones_guardadas_patente").on(t.patente),
+  clienteIdx: index("idx_cotizaciones_guardadas_cliente").on(t.cliente),
+  creadoEnIdx: index("idx_cotizaciones_guardadas_creado_en").on(t.creadoEn),
+}));
+
+// ---------------------------------------------------------------------------
 // Lubricación (guía TotalEnergies por modelo/cilindrada)
 // ---------------------------------------------------------------------------
 

@@ -31,6 +31,7 @@ export async function repuestosConStockBajo(marcaId?: number) {
       id: repuestos.id,
       codigo: repuestos.codigo,
       nombre: repuestos.nombre,
+      marcaId: repuestos.marcaId,
       marcaNombre: marcas.nombre,
       stockActual: repuestos.stockActual,
       stockMinimo: repuestos.stockMinimo,
