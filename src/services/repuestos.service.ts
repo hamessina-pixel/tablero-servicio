@@ -102,6 +102,8 @@ export async function actualizarRepuesto(
   actor: Usuario | null,
   repuestoId: number,
   cambios: {
+    codigo?: string | null;
+    nombre?: string | null;
     stockActual?: number | null;
     stockMinimo?: number | null;
     precioCosto?: number | null;
@@ -119,9 +121,25 @@ export async function actualizarRepuesto(
   if (cambios.stockActual != null || cambios.stockMinimo != null || cambios.esStockGestionado != null) {
     exigirPermiso(usuario, "stock:editar");
   }
+  // Código y nombre son la identidad del repuesto en el catálogo: mismo
+  // permiso que dar de alta o de baja un repuesto, no el de precios/stock.
+  if (cambios.codigo !== undefined || cambios.nombre !== undefined) {
+    exigirPermiso(usuario, "repuestos:crear");
+  }
 
   const existente = await repuestosRepo.buscarRepuestoPorId(repuestoId);
   if (!existente) throw new NotFoundError("Repuesto no encontrado");
+
+  if (cambios.codigo != null) {
+    const codigo = cambios.codigo.trim();
+    if (!codigo) throw new ValidationError("El código no puede quedar vacío");
+    if (codigo !== existente.codigo) {
+      const yaExiste = await repuestosRepo.existeOtroConCodigo(existente.marcaId, codigo, repuestoId);
+      if (yaExiste) throw new ConflictError("Ya existe un repuesto con ese código para esta marca");
+    }
+    cambios = { ...cambios, codigo };
+  }
+
   const actualizado = await repuestosRepo.actualizarRepuesto(repuestoId, cambios);
   await auditoriaRepo.registrar({
     usuarioId: usuario.id, accion: "editar", entidad: "repuesto", entidadId: repuestoId,

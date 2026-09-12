@@ -14,6 +14,8 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/repuestos/[id]"
 }
 
 interface CambiosRepuestoBody {
+  codigo?: string | null;
+  nombre?: string | null;
   stockActual?: number | null;
   stockMinimo?: number | null;
   precioCosto?: number | null;
@@ -24,6 +26,8 @@ interface CambiosRepuestoBody {
 function validarBody(body: unknown): CambiosRepuestoBody {
   const b = (body ?? {}) as Record<string, unknown>;
   const out: CambiosRepuestoBody = {};
+  if (typeof b.codigo === "string") out.codigo = b.codigo;
+  if (typeof b.nombre === "string" || b.nombre === null) out.nombre = b.nombre as string | null;
   if (typeof b.stockActual === "number" || b.stockActual === null) out.stockActual = b.stockActual as number | null;
   if (typeof b.stockMinimo === "number" || b.stockMinimo === null) out.stockMinimo = b.stockMinimo as number | null;
   if (typeof b.precioCosto === "number" || b.precioCosto === null) out.precioCosto = b.precioCosto as number | null;

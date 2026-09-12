@@ -6,7 +6,7 @@
  * el comportamiento de ninguna búsqueda, acá se usa `ilike` en vez de `like`
  * en todo lo que en el sistema viejo era una búsqueda de texto libre.
  */
-import { and, asc, desc, eq, ilike, inArray, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db/client";
 import { marcas, planRepuestos, repuestos } from "@/db/schema";
 import type { Repuesto } from "@/domain/types";
@@ -222,6 +222,8 @@ export async function planesQueUsanRepuesto(repuestoId: number) {
 export async function actualizarRepuesto(
   id: number,
   cambios: {
+    codigo?: string | null;
+    nombre?: string | null;
     stockActual?: number | null;
     stockMinimo?: number | null;
     precioCosto?: number | null;
@@ -230,6 +232,8 @@ export async function actualizarRepuesto(
   },
 ) {
   const set: Record<string, unknown> = {};
+  if (cambios.codigo !== undefined && cambios.codigo !== null) set.codigo = cambios.codigo;
+  if (cambios.nombre !== undefined) set.nombre = cambios.nombre;
   if (cambios.stockActual !== undefined && cambios.stockActual !== null) set.stockActual = cambios.stockActual;
   if (cambios.stockMinimo !== undefined && cambios.stockMinimo !== null) set.stockMinimo = cambios.stockMinimo;
   if (cambios.precioCosto !== undefined && cambios.precioCosto !== null) set.precioCosto = cambios.precioCosto;
@@ -241,6 +245,17 @@ export async function actualizarRepuesto(
 
   await db.update(repuestos).set(set).where(eq(repuestos.id, id));
   return buscarRepuestoPorId(id);
+}
+
+/** Para validar unicidad (marcaId, código) al renombrar un código existente. */
+export async function existeOtroConCodigo(marcaId: number | null, codigo: string, excluirId: number) {
+  if (marcaId == null) return false;
+  const [row] = await db
+    .select({ id: repuestos.id })
+    .from(repuestos)
+    .where(and(eq(repuestos.marcaId, marcaId), eq(repuestos.codigo, codigo), ne(repuestos.id, excluirId)))
+    .limit(1);
+  return Boolean(row);
 }
 
 export async function crearRepuesto(datos: {

@@ -29,6 +29,8 @@ export function RepuestoModal({
   const { usuario, puede, requireAuth } = useAuth();
   const toast = useToast();
   const [detalle, setDetalle] = useState<RepuestoDetalle | null>(null);
+  const [codigo, setCodigo] = useState("");
+  const [nombre, setNombre] = useState("");
   const [precioPublico, setPrecioPublico] = useState("");
   const [precioCosto, setPrecioCosto] = useState("");
   const [stockActual, setStockActual] = useState("");
@@ -40,6 +42,8 @@ export function RepuestoModal({
     api.repuestos.obtener(repuestoId).then((d) => {
       const det = d as RepuestoDetalle;
       setDetalle(det);
+      setCodigo(det.codigo);
+      setNombre(det.nombre ?? "");
       setPrecioPublico(det.precioPublico?.toString() ?? "");
       setPrecioCosto(det.precioCosto?.toString() ?? "");
       setStockActual(det.stockActual?.toString() ?? "0");
@@ -50,11 +54,17 @@ export function RepuestoModal({
 
   const puedePrecios = !usuario || puede("precios:editar");
   const puedeStock = !usuario || puede("stock:editar");
+  const puedeCatalogo = !usuario || puede("repuestos:crear");
 
   async function guardar() {
     const entro = await requireAuth();
     if (!entro) return;
     const cambios: Record<string, unknown> = {};
+    if (puede("repuestos:crear")) {
+      if (!codigo.trim()) { toast("El código no puede quedar vacío", "error"); return; }
+      cambios.codigo = codigo.trim();
+      cambios.nombre = nombre.trim() || null;
+    }
     if (puede("precios:editar")) {
       cambios.precioPublico = precioPublico ? Number(precioPublico) : null;
       cambios.precioCosto = precioCosto ? Number(precioCosto) : null;
@@ -90,9 +100,18 @@ export function RepuestoModal({
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold">{detalle.nombre || detalle.codigo}</h2>
-            <p className="font-mono text-[12.5px] text-[var(--text-muted)]">{detalle.codigo} · {detalle.marcaNombre}</p>
+            <p className="text-[12.5px] text-[var(--text-muted)]">{detalle.marcaNombre}</p>
           </div>
           <button onClick={onCerrar} className="rounded-full p-1 text-xl leading-none text-[var(--text-muted)] hover:bg-[var(--surface-2)]">&times;</button>
+        </div>
+
+        <div className="mb-3 grid grid-cols-2 gap-3">
+          <Campo label="Código">
+            <Input className="font-mono" value={codigo} onChange={(e) => setCodigo(e.target.value)} disabled={!puedeCatalogo} />
+          </Campo>
+          <Campo label="Nombre">
+            <Input value={nombre} onChange={(e) => setNombre(e.target.value)} disabled={!puedeCatalogo} />
+          </Campo>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -113,7 +132,7 @@ export function RepuestoModal({
           <input type="checkbox" checked={gestionado} disabled={!puedeStock} onChange={(e) => setGestionado(e.target.checked)} />
           Controlar stock de este repuesto
         </label>
-        {usuario && !puedePrecios && !puedeStock && (
+        {usuario && !puedePrecios && !puedeStock && !puedeCatalogo && (
           <p className="mt-2 text-[12px] text-[var(--status-warning)]">Tu nivel de acceso no permite editar este repuesto.</p>
         )}
 
