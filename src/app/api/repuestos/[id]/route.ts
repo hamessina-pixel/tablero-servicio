@@ -1,0 +1,58 @@
+import { NextRequest, NextResponse } from "next/server";
+import * as repuestosService from "@/services/repuestos.service";
+import { errorResponse, requireIntParam } from "@/lib/http";
+import { usuarioActualDesde } from "@/lib/sesion";
+
+export async function GET(_req: Request, ctx: RouteContext<"/api/repuestos/[id]">) {
+  try {
+    const { id } = await ctx.params;
+    const data = await repuestosService.obtenerRepuesto(requireIntParam(id, "id"));
+    return NextResponse.json(data);
+  } catch (err) {
+    return errorResponse(err);
+  }
+}
+
+interface CambiosRepuestoBody {
+  stockActual?: number | null;
+  stockMinimo?: number | null;
+  precioCosto?: number | null;
+  precioPublico?: number | null;
+  esStockGestionado?: boolean | null;
+}
+
+function validarBody(body: unknown): CambiosRepuestoBody {
+  const b = (body ?? {}) as Record<string, unknown>;
+  const out: CambiosRepuestoBody = {};
+  if (typeof b.stockActual === "number" || b.stockActual === null) out.stockActual = b.stockActual as number | null;
+  if (typeof b.stockMinimo === "number" || b.stockMinimo === null) out.stockMinimo = b.stockMinimo as number | null;
+  if (typeof b.precioCosto === "number" || b.precioCosto === null) out.precioCosto = b.precioCosto as number | null;
+  if (typeof b.precioPublico === "number" || b.precioPublico === null) out.precioPublico = b.precioPublico as number | null;
+  if (typeof b.esStockGestionado === "boolean" || b.esStockGestionado === null) {
+    out.esStockGestionado = b.esStockGestionado as boolean | null;
+  }
+  return out;
+}
+
+export async function PUT(req: NextRequest, ctx: RouteContext<"/api/repuestos/[id]">) {
+  try {
+    const { id } = await ctx.params;
+    const { usuario: actor } = await usuarioActualDesde(req);
+    const body = validarBody(await req.json().catch(() => null));
+    const data = await repuestosService.actualizarRepuesto(actor, requireIntParam(id, "id"), body);
+    return NextResponse.json(data);
+  } catch (err) {
+    return errorResponse(err);
+  }
+}
+
+export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/repuestos/[id]">) {
+  try {
+    const { id } = await ctx.params;
+    const { usuario: actor } = await usuarioActualDesde(req);
+    await repuestosService.eliminarRepuesto(actor, requireIntParam(id, "id"));
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return errorResponse(err);
+  }
+}

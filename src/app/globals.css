@@ -1,0 +1,174 @@
+@import "tailwindcss";
+
+/**
+ * Tokens de diseño — traducción 1:1 de dashboard/frontend/css/variables.css
+ * (ya validados: contraste WCAG y separación por daltonismo comentados en el
+ * original). Los colores POR MARCA (BAIC, FIAT, Peugeot...) NO están acá:
+ * vienen de la columna `marcas.color` en la base de datos.
+ */
+@theme {
+  --font-sans: var(--font-jakarta), var(--font-inter), "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", monospace;
+}
+
+:root {
+  --brand: #0b6fe3;
+  --brand-strong: #0a56b4;
+  --brand-deep: #0a1a2f;
+  --brand-soft: #e8f1fe;
+  --brand-glow: rgba(11, 111, 227, .28);
+
+  --accent: #6c4bf4;
+  --accent-2: #00c2a8;
+  --accent-warm: #ff6b35;
+
+  --bg: #f4f7fc;
+  --surface: #ffffff;
+  --surface-2: #eef3fa;
+  --surface-raised: #ffffff;
+  --sidebar-bg: #0a1a2f;
+  --sidebar-bg-2: #12294a;
+  --sidebar-ink: #9db2ce;
+  --sidebar-ink-active: #ffffff;
+  --sidebar-active-bg: rgba(11, 111, 227, .24);
+
+  --text-primary: #0e1c2f;
+  --text-secondary: #4a5a70;
+  --text-muted: #66768d;
+  --text-on-brand: #ffffff;
+
+  --border: rgba(14, 28, 47, .09);
+  --border-strong: rgba(14, 28, 47, .17);
+  --gridline: #e5ebf4;
+  --baseline: #c7d2e0;
+
+  --status-good: #0e9f6e;
+  --status-warning: #f0a500;
+  --status-serious: #e07b39;
+  --status-critical: #d92d20;
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(10, 26, 47, .06);
+  --shadow-card: 0 1px 2px rgba(10, 26, 47, .05), 0 8px 24px -12px rgba(10, 26, 47, .16);
+  --shadow-hover: 0 4px 10px -2px rgba(10, 26, 47, .12), 0 14px 30px -16px rgba(10, 26, 47, .2);
+  --shadow-lg: 0 20px 50px -20px rgba(10, 26, 47, .35);
+
+  --ease: cubic-bezier(.4, 0, .2, 1);
+  --ease-bounce: cubic-bezier(.34, 1.56, .64, 1);
+  --t-fast: 120ms;
+  --t: 200ms;
+  --t-slow: 420ms;
+
+  /* Donut del cotizador — colores propios, validados aparte para contraste. */
+  --cz-slice-rep: #0072ce;
+  --cz-slice-flu: #00875a;
+  --cz-slice-mo: #c78707;
+  --cz-bg-accent: color-mix(in oklab, var(--accent) 14%, transparent);
+  --cz-text-accent: var(--accent);
+  --cz-bg-success: color-mix(in oklab, var(--status-good) 14%, transparent);
+  --cz-text-success: var(--status-good);
+  --cz-bg-warning: color-mix(in oklab, var(--status-warning) 16%, transparent);
+  --cz-text-warning: #8a5c00;
+  --cz-bg-fiat: color-mix(in oklab, #b5121b 12%, transparent);
+  --cz-text-fiat: #b5121b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --brand: #4fa8ff;
+    --brand-strong: #7cc0ff;
+    --brand-deep: #0a1a2f;
+    --brand-soft: rgba(79, 168, 255, .12);
+    --brand-glow: rgba(79, 168, 255, .3);
+
+    --bg: #060d17;
+    --surface: #0f1a29;
+    --surface-2: #14213380;
+    --surface-raised: #17243780;
+    --sidebar-bg: #050b14;
+    --sidebar-bg-2: #0a1626;
+    --sidebar-ink: #8199b8;
+    --sidebar-active-bg: rgba(79, 168, 255, .2);
+
+    --text-primary: #eaf1fa;
+    --text-secondary: #a7b8d0;
+    --text-muted: #7788a3;
+
+    --border: rgba(234, 241, 250, .09);
+    --border-strong: rgba(234, 241, 250, .17);
+    --gridline: #1d2a3d;
+    --baseline: #2a3a52;
+
+    --status-good: #34c596;
+    --status-warning: #f0b93f;
+    --status-critical: #f06a62;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -12px rgba(0, 0, 0, .55);
+    --shadow-hover: 0 4px 10px -2px rgba(0, 0, 0, .35), 0 14px 30px -16px rgba(0, 0, 0, .6);
+    --shadow-lg: 0 20px 50px -20px rgba(0, 0, 0, .7);
+
+    --cz-text-warning: #f0b93f;
+  }
+}
+:root[data-theme="dark"] {
+  --brand: #4fa8ff;
+  --brand-strong: #7cc0ff;
+  --brand-soft: rgba(79, 168, 255, .12);
+  --brand-glow: rgba(79, 168, 255, .3);
+  --bg: #060d17;
+  --surface: #0f1a29;
+  --surface-2: #14213380;
+  --surface-raised: #17243780;
+  --sidebar-bg: #050b14;
+  --sidebar-bg-2: #0a1626;
+  --sidebar-ink: #8199b8;
+  --sidebar-active-bg: rgba(79, 168, 255, .2);
+  --text-primary: #eaf1fa;
+  --text-secondary: #a7b8d0;
+  --text-muted: #7788a3;
+  --border: rgba(234, 241, 250, .09);
+  --border-strong: rgba(234, 241, 250, .17);
+  --gridline: #1d2a3d;
+  --baseline: #2a3a52;
+  --status-good: #34c596;
+  --status-warning: #f0b93f;
+  --status-critical: #f06a62;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -12px rgba(0, 0, 0, .55);
+  --shadow-hover: 0 4px 10px -2px rgba(0, 0, 0, .35), 0 14px 30px -16px rgba(0, 0, 0, .6);
+  --shadow-lg: 0 20px 50px -20px rgba(0, 0, 0, .7);
+  --cz-text-warning: #f0b93f;
+}
+
+html { height: 100%; color-scheme: light dark; }
+body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+* { box-sizing: border-box; }
+::selection { background: var(--brand-glow); }
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+
+@keyframes entra {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animar-entrada { animation: entra var(--t-slow) var(--ease) both; }
+
+@media print {
+  .no-print { display: none !important; }
+}
