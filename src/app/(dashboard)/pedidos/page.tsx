@@ -9,7 +9,7 @@ import { useToast } from "@/components/Toast";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Select } from "@/components/ui/Input";
+import { Input, Select } from "@/components/ui/Input";
 import { money } from "@/lib/format";
 
 interface StockBajoItem {
@@ -41,6 +41,7 @@ function PedidosPageInner() {
     return v > 0 ? v : undefined;
   });
   const [stockBajo, setStockBajo] = useState<StockBajoItem[]>([]);
+  const [qStockBajo, setQStockBajo] = useState("");
   const [listaCompra, setListaCompra] = useState<StockBajoItem[]>([]);
   const [pedidos, setPedidos] = useState<PedidoResumen[]>([]);
   const [generando, setGenerando] = useState(false);
@@ -54,6 +55,14 @@ function PedidosPageInner() {
   useEffect(recargarPedidos, []);
 
   const idsEnLista = useMemo(() => new Set(listaCompra.map((r) => r.id)), [listaCompra]);
+
+  const stockBajoFiltrado = useMemo(() => {
+    const texto = qStockBajo.trim().toLowerCase();
+    if (!texto) return stockBajo;
+    return stockBajo.filter((r) =>
+      r.codigo?.toLowerCase().includes(texto) || r.nombre?.toLowerCase().includes(texto),
+    );
+  }, [stockBajo, qStockBajo]);
 
   async function agregar(repuestoId: number) {
     if (!(await requirePermiso("pedidos:crear"))) return;
@@ -165,6 +174,17 @@ function PedidosPageInner() {
       <Card>
         <CardTitle>Stock bajo</CardTitle>
         <p className="mb-3 text-[12px] text-[var(--text-muted)]">Repuestos por debajo del mínimo. Agregalos a la lista de compra para incluirlos en el próximo pedido.</p>
+        <div className="mb-3 flex items-center gap-2">
+          <Input
+            value={qStockBajo}
+            onChange={(e) => setQStockBajo(e.target.value)}
+            placeholder="Buscar por código o nombre…"
+            className="max-w-xs"
+          />
+          {qStockBajo.trim() && (
+            <span className="text-[12px] text-[var(--text-muted)]">{stockBajoFiltrado.length} de {stockBajo.length}</span>
+          )}
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[600px] text-left text-[13px]">
             <thead>
@@ -179,7 +199,7 @@ function PedidosPageInner() {
               </tr>
             </thead>
             <tbody>
-              {stockBajo.map((r) => (
+              {stockBajoFiltrado.map((r) => (
                 <tr key={r.id} className="border-b border-[var(--border)] last:border-0">
                   <td className="py-2 pr-2">{r.marcaNombre}</td>
                   <td className="py-2 pr-2 font-mono">{r.codigo}</td>
@@ -194,8 +214,10 @@ function PedidosPageInner() {
                   </td>
                 </tr>
               ))}
-              {stockBajo.length === 0 && (
-                <tr><td colSpan={7} className="py-6 text-center text-[var(--text-muted)]">Sin códigos con stock bajo.</td></tr>
+              {stockBajoFiltrado.length === 0 && (
+                <tr><td colSpan={7} className="py-6 text-center text-[var(--text-muted)]">
+                  {qStockBajo.trim() ? "Ningún repuesto coincide con esa búsqueda." : "Sin códigos con stock bajo."}
+                </td></tr>
               )}
             </tbody>
           </table>
