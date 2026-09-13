@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/apiClient";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/components/Toast";
@@ -211,6 +211,7 @@ export function RepuestoModal({
             ) : (
               <>
                 <p className="mb-2 text-[12.5px] font-bold">Sustitución verificada en Fiat LinkEntry</p>
+                <LinkEntryAtajo codigo={detalle.codigo} />
                 <p className="mb-2 text-[12px] text-[var(--text-muted)]">
                   Reemplaza el código <span className="font-mono">{detalle.codigo}</span> por el nuevo número informado
                   por la terminal, actualiza sus precios y deja la equivalencia asentada para futuras búsquedas.
@@ -243,6 +244,62 @@ export function RepuestoModal({
           <Button variante="primary" onClick={guardar} disabled={guardando}>Guardar</Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+const URL_LINKENTRY = "https://linkentry-ames.fiat.com/appl/NSC/index.php?module=partsinquiry";
+
+/** Abre la consulta de piezas de la terminal y deja el código a mano para
+ *  pegarlo allá: el portal pide login propio, así que no se puede consultar
+ *  desde acá — esto ahorra el ida y vuelta de buscar la pantalla y tipear. */
+function LinkEntryAtajo({ codigo }: { codigo: string }) {
+  const [copiado, setCopiado] = useState(false);
+  const campo = useRef<HTMLInputElement>(null);
+
+  async function copiar() {
+    // Donde el portapapeles está bloqueado (visores embebidos, http sin TLS)
+    // queda al menos el código seleccionado para copiarlo con el teclado.
+    campo.current?.select();
+    try {
+      await navigator.clipboard.writeText(codigo);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      /* queda seleccionado: Ctrl+C */
+    }
+  }
+
+  return (
+    <div className="mb-2 flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <a
+          href={URL_LINKENTRY}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-[var(--radius-sm)] border border-[var(--border-strong)] px-2.5 py-1 text-[12px]
+                     font-semibold text-[var(--brand)] hover:bg-[var(--surface-2)]"
+        >
+          Abrir Fiat LinkEntry ↗
+        </a>
+        <input
+          ref={campo}
+          readOnly
+          value={codigo}
+          onFocus={(e) => e.target.select()}
+          className="w-[150px] rounded-[var(--radius-sm)] border border-[var(--border-strong)] bg-[var(--surface)]
+                     px-2 py-1 font-mono text-[12px] text-[var(--text-primary)]"
+        />
+        <button
+          onClick={copiar}
+          className="rounded-[var(--radius-sm)] border border-[var(--border-strong)] px-2.5 py-1 text-[12px] hover:bg-[var(--surface-2)]"
+        >
+          {copiado ? "¡Copiado!" : "Copiar"}
+        </button>
+      </div>
+      <span className="text-[11.5px] text-[var(--text-muted)]">
+        Entrá con tu usuario y clave, pegá el código en “Nro. Pieza” y tocá el ícono de flechas para ver si hay reemplazo.
+      </span>
     </div>
   );
 }
