@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/components/AuthProvider";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -110,7 +111,11 @@ export function PlanDetalle({
   adj: (v: number | null | undefined) => number;
   onGuardarHistorial?: () => void;
 }) {
+  const { requirePermiso } = useAuth();
   const imprimir = () => window.print();
+  const exportar = async () => {
+    if (await requirePermiso("exportar:excel")) exportarExcelCotizacion(plan, marcaNombre, adj);
+  };
 
   if (plan.esFlatRate && !plan.repuestos.length && !plan.fluidos.length && plan.checklist.length) {
     return (
@@ -128,7 +133,7 @@ export function PlanDetalle({
         <Acciones
           onGuardar={onGuardarHistorial}
           onImprimir={imprimir}
-          onExportar={() => exportarExcelCotizacion(plan, marcaNombre, adj)}
+          onExportar={exportar}
         />
       </div>
     );
@@ -242,7 +247,7 @@ export function PlanDetalle({
         <Acciones
           onGuardar={onGuardarHistorial}
           onImprimir={imprimir}
-          onExportar={() => exportarExcelCotizacion(plan, marcaNombre, adj)}
+          onExportar={exportar}
         />
       </div>
     );
@@ -293,7 +298,7 @@ export function PlanDetalle({
       <Acciones
         onGuardar={onGuardarHistorial}
         onImprimir={imprimir}
-        onExportar={() => exportarExcelCotizacion(plan, marcaNombre, adj)}
+        onExportar={exportar}
       />
     </div>
   );

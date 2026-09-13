@@ -100,6 +100,7 @@ function PedidosPageInner() {
   }
 
   async function exportarExcel(pedidoId: number) {
+    if (!(await requirePermiso("exportar:excel"))) return;
     const pedido = await api.pedidos.obtener(pedidoId) as { id: number; fecha: string; nota: string | null; items: PedidoItem[] };
     const XLSX = await import("xlsx");
     const filas = pedido.items.map((i) => ({

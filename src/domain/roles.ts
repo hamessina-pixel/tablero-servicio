@@ -15,7 +15,7 @@ export const ROLES = {
     descripcion: "Acceso total: además de todo lo del editor, gestiona usuarios y ve la auditoría.",
     permisos: new Set([
       "stock:editar", "precios:editar", "repuestos:crear", "repuestos:eliminar",
-      "pedidos:crear", "pedidos:eliminar", "usuarios:gestionar", "auditoria:ver",
+      "pedidos:crear", "pedidos:eliminar", "usuarios:gestionar", "auditoria:ver", "exportar:excel",
     ]),
   },
   editor: {
@@ -23,7 +23,7 @@ export const ROLES = {
     descripcion: "Catálogo completo: crear, editar y eliminar repuestos, precios, stock y pedidos.",
     permisos: new Set([
       "stock:editar", "precios:editar", "repuestos:crear", "repuestos:eliminar",
-      "pedidos:crear", "pedidos:eliminar",
+      "pedidos:crear", "pedidos:eliminar", "exportar:excel",
     ]),
   },
   ventas: {

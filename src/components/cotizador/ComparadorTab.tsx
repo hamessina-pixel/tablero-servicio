@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/apiClient";
+import { useAuth } from "@/components/AuthProvider";
 import { useMarcas } from "@/components/MarcasProvider";
 import { BarChart } from "@/components/ui/BarChart";
 import { Button } from "@/components/ui/Button";
@@ -10,6 +11,7 @@ import type { ResumenPorModelo } from "@/domain/types";
 
 export function ComparadorTab({ adj }: { adj: (v: number | null | undefined) => number }) {
   const { colorMarca } = useMarcas();
+  const { requirePermiso } = useAuth();
   const [resumen, setResumen] = useState<ResumenPorModelo[]>([]);
   const [marcaFiltro, setMarcaFiltro] = useState<string | null>(null);
 
@@ -26,7 +28,8 @@ export function ComparadorTab({ adj }: { adj: (v: number | null | undefined) => 
     [resumen, marcaFiltro],
   );
 
-  function exportarExcel() {
+  async function exportarExcel() {
+    if (!(await requirePermiso("exportar:excel"))) return;
     import("xlsx").then((XLSX) => {
       const filas = resumen.map((r) => ({
         Marca: r.marca, Modelo: r.modelo,
