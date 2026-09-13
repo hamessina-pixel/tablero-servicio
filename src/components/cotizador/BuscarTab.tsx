@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/apiClient";
 import { Input } from "@/components/ui/Input";
-import { VoiceInputButton } from "@/components/VoiceInputButton";
 
 interface GrupoBusqueda {
   codigo: string | null;
@@ -33,14 +32,12 @@ export function BuscarTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex max-w-md items-center gap-1.5">
-        <Input
-          placeholder="Buscar por código o nombre de repuesto…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <VoiceInputButton onResultado={setQ} />
-      </div>
+      <Input
+        placeholder="Buscar por código o nombre de repuesto…"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        className="max-w-md"
+      />
       {resultado && (
         <>
           {resultado.totalCoincidencias !== undefined && (

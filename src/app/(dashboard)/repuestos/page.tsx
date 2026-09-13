@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { money } from "@/lib/format";
 import { RepuestoModal, CrearRepuestoModal } from "@/components/repuestos/RepuestoModal";
-import { VoiceInputButton } from "@/components/VoiceInputButton";
 import type { Repuesto } from "@/domain/types";
 
 const CATEGORIAS = [
@@ -84,10 +83,7 @@ function RepuestosPageInner() {
 
       <Card>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex max-w-xs items-center gap-1.5">
-            <Input placeholder="Buscar por código o nombre…" value={q} onChange={(e) => setQ(e.target.value)} />
-            <VoiceInputButton onResultado={setQ} />
-          </div>
+          <Input placeholder="Buscar por código o nombre…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
           <Select value={marcaId ?? ""} onChange={(e) => setMarcaId(Number(e.target.value) || undefined)} className="max-w-[160px]">
             <option value="">Todas las marcas</option>
             {marcas.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
