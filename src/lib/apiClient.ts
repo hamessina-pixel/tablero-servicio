@@ -83,8 +83,16 @@ export const api = {
     actualizar: (id: number, cambios: Record<string, unknown>) => put(`/api/repuestos/${id}`, cambios),
     registrarSustitucion: (id: number, datos: { codigoNuevo: string; precioPublico?: number | null; precioCosto?: number | null }) =>
       post(`/api/repuestos/${id}/sustitucion`, datos),
-    importarPrecios: (marcaId: number, filas: { codigo: string; precioPublico?: number | null; precioCosto?: number | null }[]) =>
-      post<{ actualizados: number; noEncontrados: string[] }>(`/api/repuestos/importar-precios`, { marcaId, filas }),
+    importarPrecios: (
+      marcaId: number,
+      filas: { codigo: string; precioPublico?: number | null; precioCosto?: number | null; descuentoPct?: number | null }[],
+      auditar = true,
+    ) =>
+      post<{ actualizados: number; sinCambios: number; noEncontrados: number }>(
+        `/api/repuestos/importar-precios`, { marcaId, filas, auditar },
+      ),
+    auditarImportacionPrecios: (resumen: { actualizados: number; sinCambios: number; noEncontrados: number; origen?: string }) =>
+      patch<{ ok: true }>(`/api/repuestos/importar-precios`, resumen),
     crear: (datos: Record<string, unknown>) => post(`/api/repuestos`, datos),
     eliminar: (id: number) => del(`/api/repuestos/${id}`),
   },

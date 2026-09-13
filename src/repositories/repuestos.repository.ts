@@ -247,24 +247,69 @@ export async function actualizarRepuesto(
   return buscarRepuestoPorId(id);
 }
 
-/** Actualiza precios de un repuesto ubicándolo por (marca, código) — para
- *  importaciones masivas donde no se tiene el id. Devuelve true si encontró
- *  y actualizó una fila. */
-export async function actualizarPrecioPorCodigo(
-  marcaId: number,
-  codigo: string,
-  precios: { precioPublico?: number; precioCosto?: number },
-) {
-  const set: Record<string, unknown> = {};
-  if (precios.precioPublico !== undefined) set.precioPublico = precios.precioPublico;
-  if (precios.precioCosto !== undefined) set.precioCosto = precios.precioCosto;
-  if (Object.keys(set).length === 0) return false;
-  const rows = await db
-    .update(repuestos)
-    .set(set)
-    .where(and(eq(repuestos.marcaId, marcaId), eq(repuestos.codigo, codigo)))
-    .returning({ id: repuestos.id });
-  return rows.length > 0;
+export interface FilaPrecioLote {
+  codigo: string;
+  precioPublico?: number | null;
+  precioCosto?: number | null;
+  descuentoPct?: number | null;
+}
+
+/**
+ * Actualiza precios de un lote de repuestos ubicándolos por (marca, código),
+ * en una sola consulta. Un campo que viene null/undefined no se toca (queda
+ * el valor que ya tenía), y solo se escriben las filas donde algún valor
+ * realmente cambia — así reimportar la misma lista no genera escrituras.
+ *
+ * Devuelve los códigos efectivamente modificados y los que existen en esa
+ * marca, para poder informar cuántos quedaron igual y cuántos no se encontraron.
+ */
+export async function actualizarPreciosLote(marcaId: number, filas: FilaPrecioLote[]) {
+  if (!filas.length) return { actualizados: [] as string[], existentes: 0 };
+
+  const SEP = "";
+  const codigos = filas.map((f) => f.codigo).join(SEP);
+  const numero = (v: number | null | undefined) => (v == null ? "" : String(v));
+  const publicos = filas.map((f) => numero(f.precioPublico)).join(SEP);
+  const costos = filas.map((f) => numero(f.precioCosto)).join(SEP);
+  const descuentos = filas.map((f) => numero(f.descuentoPct)).join(SEP);
+
+  const datos = sql`
+    SELECT t.codigo,
+           NULLIF(t.publico, '')::double precision   AS publico,
+           NULLIF(t.costo, '')::double precision     AS costo,
+           NULLIF(t.descuento, '')::double precision AS descuento
+      FROM unnest(
+             string_to_array(${codigos}, ${SEP}),
+             string_to_array(${publicos}, ${SEP}),
+             string_to_array(${costos}, ${SEP}),
+             string_to_array(${descuentos}, ${SEP})
+           ) AS t(codigo, publico, costo, descuento)
+  `;
+
+  const actualizadas = await db.execute(sql`
+    UPDATE ${repuestos} r
+       SET precio_publico = COALESCE(d.publico, r.precio_publico),
+           precio_costo   = COALESCE(d.costo, r.precio_costo),
+           descuento_pct  = COALESCE(d.descuento, r.descuento_pct)
+      FROM (${datos}) d
+     WHERE r.marca_id = ${marcaId}
+       AND r.codigo = d.codigo
+       AND (r.precio_publico IS DISTINCT FROM COALESCE(d.publico, r.precio_publico)
+         OR r.precio_costo   IS DISTINCT FROM COALESCE(d.costo, r.precio_costo)
+         OR r.descuento_pct  IS DISTINCT FROM COALESCE(d.descuento, r.descuento_pct))
+    RETURNING r.codigo
+  `);
+
+  const [{ n }] = (await db.execute(sql`
+    SELECT count(*) AS n FROM ${repuestos} r
+     WHERE r.marca_id = ${marcaId}
+       AND r.codigo = ANY(string_to_array(${codigos}, ${SEP}))
+  `)).rows as { n: string }[];
+
+  return {
+    actualizados: actualizadas.rows.map((r) => r.codigo as string),
+    existentes: Number(n),
+  };
 }
 
 /** Para validar unicidad (marcaId, código) al renombrar un código existente. */

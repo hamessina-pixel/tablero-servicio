@@ -208,29 +208,50 @@ export async function registrarSustitucionFiat(
 export async function actualizarPreciosMasivo(
   actor: Usuario | null,
   marcaId: number,
-  filas: { codigo: string; precioPublico?: number | null; precioCosto?: number | null }[],
+  filas: repuestosRepo.FilaPrecioLote[],
+  opciones: { auditar?: boolean } = {},
 ) {
   const usuario = await exigirPermiso(actor, "precios:editar");
 
-  let actualizados = 0;
-  const noEncontrados: string[] = [];
-  for (const fila of filas) {
-    const codigo = fila.codigo.trim();
-    if (!codigo) continue;
-    const ok = await repuestosRepo.actualizarPrecioPorCodigo(marcaId, codigo, {
-      precioPublico: fila.precioPublico ?? undefined,
-      precioCosto: fila.precioCosto ?? undefined,
+  const limpias = filas
+    .map((f) => ({ ...f, codigo: f.codigo.trim() }))
+    .filter((f) => f.codigo);
+
+  const { actualizados, existentes } = await repuestosRepo.actualizarPreciosLote(marcaId, limpias);
+  const resultado = {
+    actualizados: actualizados.length,
+    sinCambios: existentes - actualizados.length,
+    noEncontrados: limpias.length - existentes,
+  };
+
+  // Una importación grande se manda en lotes: se audita una sola vez, al
+  // cerrar, para no ensuciar la auditoría con una fila por lote.
+  if (opciones.auditar !== false) {
+    await auditoriaRepo.registrar({
+      usuarioId: usuario.id, accion: "editar", entidad: "repuesto",
+      detalle: `Importación de precios: ${resultado.actualizados} actualizados, ` +
+               `${resultado.sinCambios} sin cambios, ${resultado.noEncontrados} no encontrados`,
+      fecha: ahoraArgentinaISO(),
     });
-    if (ok) actualizados++; else noEncontrados.push(codigo);
   }
 
+  return resultado;
+}
+
+/** Cierra una importación por lotes dejando un solo registro de auditoría con
+ *  los totales acumulados del lado del cliente. */
+export async function auditarImportacionPrecios(
+  actor: Usuario | null,
+  resumen: { actualizados: number; sinCambios: number; noEncontrados: number; origen?: string },
+) {
+  const usuario = await exigirPermiso(actor, "precios:editar");
   await auditoriaRepo.registrar({
     usuarioId: usuario.id, accion: "editar", entidad: "repuesto",
-    detalle: `Importación de precios: ${actualizados} actualizados, ${noEncontrados.length} no encontrados`,
+    detalle: `Importación de precios${resumen.origen ? ` (${resumen.origen})` : ""}: ` +
+             `${resumen.actualizados} actualizados, ${resumen.sinCambios} sin cambios, ` +
+             `${resumen.noEncontrados} no encontrados`,
     fecha: ahoraArgentinaISO(),
   });
-
-  return { actualizados, noEncontrados };
 }
 
 export async function crearRepuesto(
