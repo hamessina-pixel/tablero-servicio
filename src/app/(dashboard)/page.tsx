@@ -48,10 +48,14 @@ export default function InicioPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h1 className="text-xl font-extrabold">Inicio</h1>
-        <p className="text-[13px] text-[var(--text-secondary)]">Resumen general del negocio de servicio.</p>
-      </div>
+      <Card>
+        <CardTitle>Accesos rápidos</CardTitle>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button onClick={() => router.push("/repuestos?stockBajo=1")}>Ver códigos con stock bajo</Button>
+          <Button onClick={() => router.push("/cotizador")}>Ir al cotizador</Button>
+          <Button onClick={() => router.push("/sustituciones")}>Ver sustituciones</Button>
+        </div>
+      </Card>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile label="Repuestos en catálogo" value={compactNumber(r.repuestosTotal)} icon="⚙️" tono={TONO.azul} />
@@ -121,14 +125,10 @@ export default function InicioPage() {
         />
       </Card>
 
-      <Card>
-        <CardTitle>Accesos rápidos</CardTitle>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button onClick={() => router.push("/repuestos?stockBajo=1")}>Ver códigos con stock bajo</Button>
-          <Button onClick={() => router.push("/cotizador")}>Ir al cotizador</Button>
-          <Button onClick={() => router.push("/sustituciones")}>Ver sustituciones</Button>
-        </div>
-      </Card>
+      <div>
+        <h1 className="text-xl font-extrabold">Inicio</h1>
+        <p className="text-[13px] text-[var(--text-secondary)]">Resumen general del negocio de servicio.</p>
+      </div>
     </div>
   );
 }
