@@ -299,6 +299,7 @@ function LinkEntryAtajo({ codigo }: { codigo: string }) {
       </div>
       <span className="text-[11.5px] text-[var(--text-muted)]">
         Entrá con tu usuario y clave, pegá el código en “Nro. Pieza” y tocá el ícono de flechas para ver si hay reemplazo.
+        Si el portal te deja en la portada: <strong>POSTVENTA → Repuestos → Consulta de Repuestos</strong>.
       </span>
     </div>
   );
