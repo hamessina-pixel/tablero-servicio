@@ -238,9 +238,6 @@ export function PlanDetalle({
                 <LineaResumen label={`Mano de obra adicional (${horasDecimal(plan.manoObraHoras)})`} valor={money(manoObraExtra)} />
               )}
             </div>
-            <div className="mt-3 border-t border-[var(--border)] pt-2">
-              <ManoObraVerificada plan={plan} onGuardado={onPlanActualizado} />
-            </div>
           </Card>
         )}
 
