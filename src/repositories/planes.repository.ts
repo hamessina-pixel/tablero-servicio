@@ -29,6 +29,7 @@ export async function listarPlanes(filtros: { modeloId?: number; marcaId?: numbe
       notas: planesMantenimiento.notas,
       packRepuestosCosto: planesMantenimiento.packRepuestosCosto,
       packManoObraCosto: planesMantenimiento.packManoObraCosto,
+      manoObraHorasVerificada: planesMantenimiento.manoObraHorasVerificada,
       modeloNombre: modelos.nombre,
       marcaNombre: marcas.nombre,
     })
@@ -110,6 +111,7 @@ export async function buscarPlanPorId(planId: number) {
       notas: planesMantenimiento.notas,
       packRepuestosCosto: planesMantenimiento.packRepuestosCosto,
       packManoObraCosto: planesMantenimiento.packManoObraCosto,
+      manoObraHorasVerificada: planesMantenimiento.manoObraHorasVerificada,
       modeloNombre: modelos.nombre,
       marcaNombre: marcas.nombre,
       marcaId: modelos.marcaId,
@@ -144,6 +146,10 @@ export async function checklistDelPlan(planId: number) {
     .from(planChecklist)
     .where(eq(planChecklist.planId, planId))
     .orderBy(asc(planChecklist.id));
+}
+
+export async function actualizarManoObraVerificada(planId: number, horas: number | null) {
+  await db.update(planesMantenimiento).set({ manoObraHorasVerificada: horas }).where(eq(planesMantenimiento.id, planId));
 }
 
 export async function flagDeModeloYKm(modeloId: number, kmIntervalo: number) {

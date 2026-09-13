@@ -68,6 +68,8 @@ export const api = {
     resumen: () => get<ResumenPorModelo[]>("/api/planes/resumen"),
     buscarRepuesto: (q: string) => get(`/api/planes/buscar-repuesto${qs({ q })}`),
     obtener: (id: number) => get<PlanConDetalle>(`/api/planes/${id}`),
+    actualizarManoObraVerificada: (id: number, horas: number | null) =>
+      patch<PlanMantenimiento>(`/api/planes/${id}/mano-obra-verificada`, { horas }),
   },
   repuestos: {
     listar: (filtros: Record<string, string | number | boolean | undefined> = {}) =>
@@ -81,6 +83,8 @@ export const api = {
     actualizar: (id: number, cambios: Record<string, unknown>) => put(`/api/repuestos/${id}`, cambios),
     registrarSustitucion: (id: number, datos: { codigoNuevo: string; precioPublico?: number | null; precioCosto?: number | null }) =>
       post(`/api/repuestos/${id}/sustitucion`, datos),
+    importarPrecios: (marcaId: number, filas: { codigo: string; precioPublico?: number | null; precioCosto?: number | null }[]) =>
+      post<{ actualizados: number; noEncontrados: string[] }>(`/api/repuestos/importar-precios`, { marcaId, filas }),
     crear: (datos: Record<string, unknown>) => post(`/api/repuestos`, datos),
     eliminar: (id: number) => del(`/api/repuestos/${id}`),
   },

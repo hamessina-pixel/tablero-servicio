@@ -1,0 +1,1 @@
+ALTER TABLE "planes_mantenimiento" ADD COLUMN "mano_obra_horas_verificada" double precision;

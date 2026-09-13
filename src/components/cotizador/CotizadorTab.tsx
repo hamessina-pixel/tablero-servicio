@@ -162,7 +162,14 @@ export function CotizadorTab({
           <p className="text-[13px] text-[var(--text-secondary)]">
             {plan.marcaNombre} {plan.modeloNombre} · {Math.round(plan.kmIntervalo / 1000)}.000 km
           </p>
-          <PlanDetalle plan={plan} marcaNombre={plan.marcaNombre} lub={lub} adj={adj} onGuardarHistorial={abrirGuardar} />
+          <PlanDetalle
+            plan={plan}
+            marcaNombre={plan.marcaNombre}
+            lub={lub}
+            adj={adj}
+            onGuardarHistorial={abrirGuardar}
+            onPlanActualizado={() => api.planes.obtener(plan.id).then(setPlan)}
+          />
         </>
       )}
 

@@ -247,6 +247,26 @@ export async function actualizarRepuesto(
   return buscarRepuestoPorId(id);
 }
 
+/** Actualiza precios de un repuesto ubicándolo por (marca, código) — para
+ *  importaciones masivas donde no se tiene el id. Devuelve true si encontró
+ *  y actualizó una fila. */
+export async function actualizarPrecioPorCodigo(
+  marcaId: number,
+  codigo: string,
+  precios: { precioPublico?: number; precioCosto?: number },
+) {
+  const set: Record<string, unknown> = {};
+  if (precios.precioPublico !== undefined) set.precioPublico = precios.precioPublico;
+  if (precios.precioCosto !== undefined) set.precioCosto = precios.precioCosto;
+  if (Object.keys(set).length === 0) return false;
+  const rows = await db
+    .update(repuestos)
+    .set(set)
+    .where(and(eq(repuestos.marcaId, marcaId), eq(repuestos.codigo, codigo)))
+    .returning({ id: repuestos.id });
+  return rows.length > 0;
+}
+
 /** Para validar unicidad (marcaId, código) al renombrar un código existente. */
 export async function existeOtroConCodigo(marcaId: number | null, codigo: string, excluirId: number) {
   if (marcaId == null) return false;

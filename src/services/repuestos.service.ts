@@ -200,6 +200,39 @@ export async function registrarSustitucionFiat(
   return actualizado;
 }
 
+/**
+ * Importación masiva de precios (p.ej. desde la lista de precios oficial de
+ * Fiat LinkEntry): actualiza por (marca, código) los repuestos que coincidan
+ * y devuelve cuántos se actualizaron y cuáles códigos no se encontraron.
+ */
+export async function actualizarPreciosMasivo(
+  actor: Usuario | null,
+  marcaId: number,
+  filas: { codigo: string; precioPublico?: number | null; precioCosto?: number | null }[],
+) {
+  const usuario = await exigirPermiso(actor, "precios:editar");
+
+  let actualizados = 0;
+  const noEncontrados: string[] = [];
+  for (const fila of filas) {
+    const codigo = fila.codigo.trim();
+    if (!codigo) continue;
+    const ok = await repuestosRepo.actualizarPrecioPorCodigo(marcaId, codigo, {
+      precioPublico: fila.precioPublico ?? undefined,
+      precioCosto: fila.precioCosto ?? undefined,
+    });
+    if (ok) actualizados++; else noEncontrados.push(codigo);
+  }
+
+  await auditoriaRepo.registrar({
+    usuarioId: usuario.id, accion: "editar", entidad: "repuesto",
+    detalle: `Importación de precios: ${actualizados} actualizados, ${noEncontrados.length} no encontrados`,
+    fecha: ahoraArgentinaISO(),
+  });
+
+  return { actualizados, noEncontrados };
+}
+
 export async function crearRepuesto(
   actor: Usuario | null,
   datos: {

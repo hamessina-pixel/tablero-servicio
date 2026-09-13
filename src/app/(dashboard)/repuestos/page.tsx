@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { money } from "@/lib/format";
 import { RepuestoModal, CrearRepuestoModal } from "@/components/repuestos/RepuestoModal";
+import { ImportarPreciosModal } from "@/components/repuestos/ImportarPreciosModal";
 import type { Repuesto } from "@/domain/types";
 
 const CATEGORIAS = [
@@ -55,6 +56,7 @@ function RepuestosPageInner() {
   const [conteos, setConteos] = useState<Record<string, number>>({});
   const [abiertoId, setAbiertoId] = useState<number | null>(null);
   const [crear, setCrear] = useState(false);
+  const [importarPrecios, setImportarPrecios] = useState(false);
 
   const pageSize = 25;
 
@@ -70,6 +72,11 @@ function RepuestosPageInner() {
   async function abrirCrear() {
     if (!(await requirePermiso("repuestos:crear"))) return;
     setCrear(true);
+  }
+
+  async function abrirImportarPrecios() {
+    if (!(await requirePermiso("precios:editar"))) return;
+    setImportarPrecios(true);
   }
 
   const totalPaginas = Math.max(Math.ceil(total / pageSize), 1);
@@ -97,7 +104,8 @@ function RepuestosPageInner() {
             <input type="checkbox" checked={stockBajo} onChange={(e) => setStockBajo(e.target.checked)} />
             Stock bajo
           </label>
-          <Button variante="primary" className="ml-auto" onClick={abrirCrear}>+ Agregar a stock</Button>
+          <Button className="ml-auto" onClick={abrirImportarPrecios}>Importar precios</Button>
+          <Button variante="primary" onClick={abrirCrear}>+ Agregar a stock</Button>
         </div>
       </Card>
 
@@ -153,6 +161,9 @@ function RepuestosPageInner() {
         <RepuestoModal repuestoId={abiertoId} marcas={marcas} onCerrar={() => setAbiertoId(null)} onGuardado={recargar} />
       )}
       {crear && <CrearRepuestoModal marcas={marcas} onCerrar={() => setCrear(false)} onCreado={recargar} />}
+      {importarPrecios && (
+        <ImportarPreciosModal marcas={marcas} onCerrar={() => setImportarPrecios(false)} onImportado={recargar} />
+      )}
     </div>
   );
 }

@@ -4,11 +4,14 @@
  */
 import * as planesRepo from "@/repositories/planes.repository";
 import * as repuestosRepo from "@/repositories/repuestos.repository";
+import * as auditoriaRepo from "@/repositories/auditoria.repository";
 import { buscarEquivalentesConStock } from "@/services/repuestos.service";
-import { NotFoundError } from "@/domain/errors";
+import { exigirPermiso } from "@/services/auth.service";
+import { ahoraArgentinaISO } from "@/lib/fecha";
+import { NotFoundError, ValidationError } from "@/domain/errors";
 import type {
   GrupoBusquedaRepuesto, ItemDePlanConStock, PlanConDetalle, PlanRepuesto, PlanFluido,
-  ResumenPorModelo,
+  ResumenPorModelo, Usuario,
 } from "@/domain/types";
 
 /** Agrega a cada repuesto del plan su stock en vivo (dentro de la marca del
@@ -129,4 +132,27 @@ export async function obtenerPlan(planId: number): Promise<PlanConDetalle> {
   ]);
 
   return { ...plan, repuestos, fluidos, checklist, flag: flag ?? null };
+}
+
+/**
+ * Guarda las horas de mano de obra verificadas a mano contra el manual de
+ * tiempos oficial de la terminal (dato de referencia: no toca costoTotal ni
+ * precioSugerido, que siguen siendo los que ya tiene cargado el plan).
+ */
+export async function actualizarManoObraVerificada(
+  actor: Usuario | null,
+  planId: number,
+  horas: number | null,
+) {
+  const usuario = await exigirPermiso(actor, "precios:editar");
+  const plan = await planesRepo.buscarPlanPorId(planId);
+  if (!plan) throw new NotFoundError("Plan no encontrado");
+  if (horas != null && horas <= 0) throw new ValidationError("Las horas deben ser mayores a 0");
+
+  await planesRepo.actualizarManoObraVerificada(planId, horas);
+  await auditoriaRepo.registrar({
+    usuarioId: usuario.id, accion: "editar", entidad: "plan", entidadId: planId,
+    detalle: `Horas de mano de obra verificadas: ${horas ?? "—"}`, fecha: ahoraArgentinaISO(),
+  });
+  return planesRepo.buscarPlanPorId(planId);
 }

@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import { useToast } from "@/components/Toast";
+import { api, ApiError } from "@/lib/apiClient";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { Donut } from "@/components/ui/Donut";
 import { money, horasDecimal } from "@/lib/format";
 import type { ItemDePlanConStock, PlanConDetalle, StockDeCodigo } from "@/domain/types";
@@ -104,12 +107,14 @@ export function PlanDetalle({
   lub,
   adj,
   onGuardarHistorial,
+  onPlanActualizado,
 }: {
   plan: PlanConDetalle;
   marcaNombre: string;
   lub: LubricacionResultado | null;
   adj: (v: number | null | undefined) => number;
   onGuardarHistorial?: () => void;
+  onPlanActualizado?: () => void;
 }) {
   const { requirePermiso } = useAuth();
   const imprimir = () => window.print();
@@ -233,6 +238,9 @@ export function PlanDetalle({
                 <LineaResumen label={`Mano de obra adicional (${horasDecimal(plan.manoObraHoras)})`} valor={money(manoObraExtra)} />
               )}
             </div>
+            <div className="mt-3 border-t border-[var(--border)] pt-2">
+              <ManoObraVerificada plan={plan} onGuardado={onPlanActualizado} />
+            </div>
           </Card>
         )}
 
@@ -275,6 +283,9 @@ export function PlanDetalle({
             ]}
           />
         </div>
+        <div className="mt-3 border-t border-[var(--border)] pt-2">
+          <ManoObraVerificada plan={plan} onGuardado={onPlanActualizado} />
+        </div>
       </Card>
       <Card>
         <CardTitle>Repuestos</CardTitle>
@@ -300,6 +311,63 @@ export function PlanDetalle({
         onImprimir={imprimir}
         onExportar={exportar}
       />
+    </div>
+  );
+}
+
+/** Horas de mano de obra verificadas a mano contra el manual de tiempos
+ *  oficial de la terminal — solo referencia, no cambia el precio del plan. */
+function ManoObraVerificada({ plan, onGuardado }: { plan: PlanConDetalle; onGuardado?: () => void }) {
+  const { usuario, puede, requireAuth } = useAuth();
+  const toast = useToast();
+  const [editando, setEditando] = useState(false);
+  const [horas, setHoras] = useState(plan.manoObraHorasVerificada?.toString() ?? "");
+  const [guardando, setGuardando] = useState(false);
+
+  const puedeEditar = !usuario || puede("precios:editar");
+  if (usuario && !puedeEditar && plan.manoObraHorasVerificada == null) return null;
+
+  async function guardar() {
+    const entro = await requireAuth();
+    if (!entro) return;
+    const n = Number(horas.replace(",", "."));
+    if (!horas.trim() || !Number.isFinite(n) || n <= 0) { toast("Ingresá horas válidas", "error"); return; }
+    setGuardando(true);
+    try {
+      await api.planes.actualizarManoObraVerificada(plan.id, n);
+      toast("Horas oficiales guardadas", "success");
+      setEditando(false);
+      onGuardado?.();
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "No se pudo guardar", "error");
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  if (!editando) {
+    return (
+      <div className="no-print flex items-center gap-2 text-[12px] text-[var(--text-muted)]">
+        {plan.manoObraHorasVerificada != null ? (
+          <span>Horas oficiales verificadas (Fiat): <strong>{horasDecimal(plan.manoObraHorasVerificada)}</strong></span>
+        ) : (
+          <span>Sin horas oficiales verificadas todavía</span>
+        )}
+        {puedeEditar && (
+          <button className="text-[var(--brand)] hover:underline" onClick={() => setEditando(true)}>
+            {plan.manoObraHorasVerificada != null ? "editar" : "verificar en Fiat LinkEntry"}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="no-print flex items-center gap-2 text-[12px]">
+      <span className="text-[var(--text-muted)]">Horas oficiales (Fiat):</span>
+      <Input type="number" className="!w-24 !py-1" value={horas} onChange={(e) => setHoras(e.target.value)} />
+      <Button tamano="sm" variante="primary" onClick={guardar} disabled={guardando}>Guardar</Button>
+      <Button tamano="sm" onClick={() => setEditando(false)}>Cancelar</Button>
     </div>
   );
 }

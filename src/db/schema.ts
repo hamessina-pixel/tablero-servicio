@@ -106,6 +106,11 @@ export const planesMantenimiento = pgTable("planes_mantenimiento", {
   // terminal, nunca se toca); estas dos columnas dicen de qué se compone.
   packRepuestosCosto: doublePrecision("pack_repuestos_costo"),
   packManoObraCosto: doublePrecision("pack_mano_obra_costo"),
+  // Horas de mano de obra verificadas a mano contra el manual de tiempos
+  // oficial de la terminal (Fiat LinkEntry). Es solo un dato de referencia:
+  // no recalcula costoTotal/precioSugerido, para no alterar cotizaciones ya
+  // cargadas sin que alguien lo decida explícitamente.
+  manoObraHorasVerificada: doublePrecision("mano_obra_horas_verificada"),
 }, (t) => ({
   modeloKmUnico: uniqueIndex("planes_modelo_km_unico").on(t.modeloId, t.kmIntervalo),
   modeloIdx: index("idx_planes_modelo").on(t.modeloId),
