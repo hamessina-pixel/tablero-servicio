@@ -104,6 +104,7 @@ export interface ResumenDashboard {
   planesMantenimiento: number;
   sustituciones: number;
   valorStockGestionado: number;
+  valorStockPorMarca: { marca: string; valor: number }[];
   repuestosPorMarca: { marca: string; repuestos: number }[];
   modelosPorMarca: { marca: string; modelos: number }[];
   costoPorKmTop: { modelo: string; marca: string; costoPorKm: number }[];

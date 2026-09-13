@@ -13,6 +13,9 @@ export async function resumen(): Promise<ResumenDashboard> {
     planesMantenimiento: r.planesMantenimiento,
     sustituciones: r.sustituciones,
     valorStockGestionado: r.valorStockGestionado,
+    valorStockPorMarca: r.valorStockPorMarca
+      .map((x) => ({ marca: x.marca, valor: Number(x.valor) }))
+      .filter((x) => x.valor > 0),
     repuestosPorMarca: r.repuestosPorMarca,
     modelosPorMarca: r.modelosPorMarca,
     costoPorKmTop: r.costoPorKmTop.map((x) => ({

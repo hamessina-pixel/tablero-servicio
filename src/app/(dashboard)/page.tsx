@@ -67,6 +67,14 @@ export default function InicioPage() {
         <StatTile label="Sustituciones registradas" value={compactNumber(r.sustituciones)} icon="⇄" tono={TONO.pizarra} />
       </div>
 
+      <Card>
+        <CardTitle>Valor de stock por marca</CardTitle>
+        <p className="mb-3 text-[12px] text-[var(--text-muted)]">Costo de reposición del stock gestionado (excluye unidades de prueba), por marca</p>
+        <BarChart
+          rows={r.valorStockPorMarca.map((x) => ({ label: x.marca, value: x.valor, color: colorMarca(x.marca), valueLabel: money(x.valor) }))}
+        />
+      </Card>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardTitle>Repuestos por marca</CardTitle>

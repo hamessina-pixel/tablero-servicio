@@ -41,6 +41,15 @@ export async function resumenDashboard() {
   `);
   const valorStockGestionado = Number(valorRows[0].v);
 
+  const { rows: valorPorMarca } = await db.execute(sql`
+    SELECT ma.nombre AS marca, COALESCE(SUM(r.stock_actual * r.precio_costo), 0) AS valor
+      FROM marcas ma LEFT JOIN repuestos r
+        ON r.marca_id = ma.id AND r.es_stock_gestionado = true AND r.stock_ficticio = false
+           AND r.stock_actual > 0 AND r.precio_costo > 0
+     GROUP BY ma.id, ma.nombre
+     ORDER BY valor DESC
+  `);
+
   const { rows: porMarca } = await db.execute(sql`
     SELECT ma.nombre AS marca, COUNT(r.id)::int AS repuestos
       FROM marcas ma LEFT JOIN repuestos r ON r.marca_id = ma.id
@@ -75,6 +84,7 @@ export async function resumenDashboard() {
     planesMantenimiento: planes,
     sustituciones,
     valorStockGestionado,
+    valorStockPorMarca: valorPorMarca as Array<{ marca: string; valor: number | string }>,
     repuestosPorMarca: porMarca as Array<{ marca: string; repuestos: number }>,
     modelosPorMarca: modelosPorMarca as Array<{ marca: string; modelos: number }>,
     costoPorKmTop: topCostoKm as Array<{ modelo: string; marca: string; costo_por_km: number | null }>,
