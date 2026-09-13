@@ -4,7 +4,7 @@
  * podía guardar y volver a cargar una cotización).
  */
 import * as repo from "@/repositories/cotizacionesGuardadas.repository";
-import { ValidationError } from "@/domain/errors";
+import { NotFoundError, ValidationError } from "@/domain/errors";
 import type { Usuario } from "@/domain/types";
 
 export async function guardarCotizacion(actor: Usuario | null, datos: {
@@ -29,4 +29,16 @@ export async function buscarCotizaciones(q?: string) {
   if (!texto) return repo.recientesCotizacionesGuardadas(30);
   if (texto.length < 2) throw new ValidationError("Escribí al menos 2 caracteres para buscar");
   return repo.buscarCotizacionesGuardadas(texto);
+}
+
+export async function actualizarCotizacion(id: number, cambios: { patente?: string; cliente?: string }) {
+  const existente = await repo.buscarCotizacionGuardadaPorId(id);
+  if (!existente) throw new NotFoundError("Cotización no encontrada");
+  return repo.actualizarCotizacionGuardada(id, cambios);
+}
+
+export async function eliminarCotizacion(id: number) {
+  const existente = await repo.buscarCotizacionGuardadaPorId(id);
+  if (!existente) throw new NotFoundError("Cotización no encontrada");
+  await repo.eliminarCotizacionGuardada(id);
 }

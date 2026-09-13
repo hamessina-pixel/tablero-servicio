@@ -2,7 +2,7 @@
  * Acceso a datos de `cotizaciones_guardadas`: historial de cotizaciones
  * buscable por patente o cliente, no solo el localStorage de quien cotizó.
  */
-import { desc, ilike, or } from "drizzle-orm";
+import { desc, eq, ilike, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { cotizacionesGuardadas } from "@/db/schema";
 import { ahoraArgentinaISO } from "@/lib/fecha";
@@ -48,4 +48,22 @@ export async function buscarCotizacionesGuardadas(q: string, limite = 30) {
 
 export async function recientesCotizacionesGuardadas(limite = 30) {
   return db.select().from(cotizacionesGuardadas).orderBy(desc(cotizacionesGuardadas.id)).limit(limite);
+}
+
+export async function buscarCotizacionGuardadaPorId(id: number) {
+  const [fila] = await db.select().from(cotizacionesGuardadas).where(eq(cotizacionesGuardadas.id, id)).limit(1);
+  return fila;
+}
+
+export async function actualizarCotizacionGuardada(id: number, cambios: { patente?: string | null; cliente?: string | null }) {
+  const set: Record<string, unknown> = {};
+  if (cambios.patente !== undefined) set.patente = cambios.patente?.trim().toUpperCase() || null;
+  if (cambios.cliente !== undefined) set.cliente = cambios.cliente?.trim() || null;
+  if (Object.keys(set).length === 0) return buscarCotizacionGuardadaPorId(id);
+  await db.update(cotizacionesGuardadas).set(set).where(eq(cotizacionesGuardadas.id, id));
+  return buscarCotizacionGuardadaPorId(id);
+}
+
+export async function eliminarCotizacionGuardada(id: number) {
+  await db.delete(cotizacionesGuardadas).where(eq(cotizacionesGuardadas.id, id));
 }

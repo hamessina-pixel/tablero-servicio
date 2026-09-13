@@ -105,6 +105,9 @@ export const api = {
       marcaId: number; modeloId: number; planId: number; marcaNombre: string; modeloNombre: string; km: number;
       patente?: string; cliente?: string; total: number; pvp?: number | null;
     }) => post("/api/cotizaciones-guardadas", datos),
+    actualizar: (id: number, cambios: { patente?: string; cliente?: string }) =>
+      patch(`/api/cotizaciones-guardadas/${id}`, cambios),
+    eliminar: (id: number) => del(`/api/cotizaciones-guardadas/${id}`),
   },
   pedidos: {
     listar: () => get("/api/pedidos"),
