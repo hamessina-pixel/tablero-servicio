@@ -42,7 +42,7 @@ const MENSAJE_ERROR: Record<string, string> = {
   "service-not-allowed": "El navegador bloqueó el acceso al micrófono para este sitio.",
   "no-speech": "No se detectó voz. Probá de nuevo, más cerca del micrófono.",
   "audio-capture": "No se encontró ningún micrófono conectado.",
-  network: "Sin conexión para el reconocimiento de voz. Revisá tu internet.",
+  network: "El navegador no pudo conectarse a su servicio de reconocimiento de voz (esto no depende de tu conexión a internet — es un problema conocido de Chrome). Probá de nuevo, en una ventana de incógnito, o desde otra red.",
   aborted: "",
 };
 
@@ -51,16 +51,13 @@ export function VoiceInputButton({ onResultado }: { onResultado: (texto: string)
   const [escuchando, setEscuchando] = useState(false);
   const [soportado, setSoportado] = useState(true);
   const recRef = useRef<SpeechRecognitionLike | null>(null);
+  const reintentadoRef = useRef(false);
 
   useEffect(() => {
     setSoportado(Boolean(crearReconocedor()));
   }, []);
 
-  function alternar() {
-    if (escuchando) {
-      recRef.current?.stop();
-      return;
-    }
+  function iniciar(esReintento: boolean) {
     const rec = crearReconocedor();
     if (!rec) { setSoportado(false); return; }
     rec.lang = "es-ES";
@@ -72,11 +69,18 @@ export function VoiceInputButton({ onResultado }: { onResultado: (texto: string)
       if (texto) onResultado(limpiarCodigoDictado(texto));
     };
     rec.onerror = (e) => {
+      // El error "network" (falla al conectar con el backend de voz de Google)
+      // suele ser transitorio: reintentar una vez antes de avisarle al usuario.
+      if (e.error === "network" && !esReintento) {
+        reintentadoRef.current = true;
+        setTimeout(() => iniciar(true), 300);
+        return;
+      }
       setEscuchando(false);
       const msg = MENSAJE_ERROR[e.error] ?? `No se pudo usar el micrófono (${e.error}).`;
       if (msg) toast(msg, "error");
     };
-    rec.onend = () => setEscuchando(false);
+    rec.onend = () => { if (!reintentadoRef.current) setEscuchando(false); reintentadoRef.current = false; };
     recRef.current = rec;
     try {
       rec.start();
@@ -84,6 +88,14 @@ export function VoiceInputButton({ onResultado }: { onResultado: (texto: string)
       setEscuchando(false);
       toast("No se pudo iniciar el micrófono.", "error");
     }
+  }
+
+  function alternar() {
+    if (escuchando) {
+      recRef.current?.stop();
+      return;
+    }
+    iniciar(false);
   }
 
   if (!soportado) return null;
