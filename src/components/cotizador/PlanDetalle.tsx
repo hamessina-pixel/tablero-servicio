@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/components/Toast";
 import { api, ApiError } from "@/lib/apiClient";
@@ -60,28 +60,49 @@ function StockDot({ item }: { item: ItemDePlanConStock | StockDeCodigo }) {
   return <Badge tono={hay ? "good" : "critical"} dot>{hay ? `${item.stockActual} en stock` : "sin stock"}</Badge>;
 }
 
-function EquivalentesDetalle({ equivalentes }: { equivalentes: StockDeCodigo[] }) {
+function EquivalentesDetalle({
+  equivalentes, codigoOriginal, elegido, onElegir,
+}: {
+  equivalentes: StockDeCodigo[];
+  codigoOriginal: string;
+  elegido?: StockDeCodigo;
+  onElegir?: (codigoOriginal: string, equivalente: StockDeCodigo | null) => void;
+}) {
   const conCatalogo = equivalentes.filter((e) => e.marcaNombre);
   if (!conCatalogo.length) return null;
   return (
-    <details className="mt-1 text-[11.5px]">
+    <details className="mt-1 text-[11.5px]" open={!!elegido}>
       <summary className="cursor-pointer text-[var(--brand)]">
         ⇄ {conCatalogo.length} código{conCatalogo.length > 1 ? "s" : ""} equivalente{conCatalogo.length > 1 ? "s" : ""}
       </summary>
       <table className="mt-1.5 w-full text-[11.5px]">
         <thead>
           <tr className="text-left text-[var(--text-muted)]">
-            <th className="pr-2 font-medium">Código</th><th className="pr-2 font-medium">Marca</th><th className="font-medium">Stock</th>
+            <th className="pr-2 font-medium">Código</th><th className="pr-2 font-medium">Marca</th>
+            <th className="pr-2 font-medium">Stock</th><th className="font-medium" />
           </tr>
         </thead>
         <tbody>
-          {conCatalogo.map((e, i) => (
-            <tr key={i}>
-              <td className="pr-2 font-mono">{e.codigo}</td>
-              <td className="pr-2">{e.marcaNombre}</td>
-              <td><StockDot item={e} /></td>
-            </tr>
-          ))}
+          {conCatalogo.map((e, i) => {
+            const esElegido = elegido?.codigo === e.codigo && elegido?.marcaNombre === e.marcaNombre;
+            return (
+              <tr key={i}>
+                <td className="pr-2 font-mono">{e.codigo}</td>
+                <td className="pr-2">{e.marcaNombre}</td>
+                <td className="pr-2"><StockDot item={e} /></td>
+                <td>
+                  {onElegir && (
+                    <button
+                      className="text-[var(--brand)] hover:underline"
+                      onClick={(ev) => { ev.preventDefault(); onElegir(codigoOriginal, esElegido ? null : e); }}
+                    >
+                      {esElegido ? "quitar" : "usar este"}
+                    </button>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </details>
@@ -117,9 +138,21 @@ export function PlanDetalle({
   onPlanActualizado?: () => void;
 }) {
   const { requirePermiso } = useAuth();
+  // Qué código equivalente se usa en lugar del que trae el plan — elección de
+  // esta cotización, no del catálogo: se reinicia al cambiar de plan.
+  const [elegidos, setElegidos] = useState<Record<string, StockDeCodigo>>({});
+  useEffect(() => setElegidos({}), [plan.id]);
+  const elegir = (codigoOriginal: string, equivalente: StockDeCodigo | null) =>
+    setElegidos((previos) => {
+      const siguiente = { ...previos };
+      if (equivalente) siguiente[codigoOriginal] = equivalente;
+      else delete siguiente[codigoOriginal];
+      return siguiente;
+    });
+
   const imprimir = () => window.print();
   const exportar = async () => {
-    if (await requirePermiso("exportar:excel")) exportarExcelCotizacion(plan, marcaNombre, adj);
+    if (await requirePermiso("exportar:excel")) exportarExcelCotizacion(plan, marcaNombre, adj, elegidos);
   };
 
   if (plan.esFlatRate && !plan.repuestos.length && !plan.fluidos.length && plan.checklist.length) {
@@ -189,6 +222,8 @@ export function PlanDetalle({
             campoCodigo="codigo"
             esBasico={(r) => esRepuestoBasicoFiat(r.nombre)}
             adj={adj}
+            elegidos={elegidos}
+            onElegir={elegir}
           />
         </Card>
         <Card>
@@ -198,6 +233,8 @@ export function PlanDetalle({
             campoCodigo="producto"
             esBasico={(f) => !esFluidoExtraFiat(f.nombre, f.producto)}
             adj={adj}
+            elegidos={elegidos}
+            onElegir={elegir}
           />
         </Card>
 
@@ -286,11 +323,13 @@ export function PlanDetalle({
       </Card>
       <Card>
         <CardTitle>Repuestos</CardTitle>
-        <TablaItems filas={plan.repuestos} campoCodigo="codigo" esBasico={() => false} adj={adj} />
+        <TablaItems filas={plan.repuestos} campoCodigo="codigo" esBasico={() => false} adj={adj}
+                    elegidos={elegidos} onElegir={elegir} />
       </Card>
       <Card>
         <CardTitle>Fluidos</CardTitle>
-        <TablaItems filas={plan.fluidos} campoCodigo="producto" esBasico={() => false} adj={adj} />
+        <TablaItems filas={plan.fluidos} campoCodigo="producto" esBasico={() => false} adj={adj}
+                    elegidos={elegidos} onElegir={elegir} />
       </Card>
       {plan.checklist.length > 0 && (
         <Card>
@@ -397,12 +436,14 @@ function precioCelda(basico: boolean, total: number | null, adj: (v: number | nu
 }
 
 function TablaItems({
-  filas, campoCodigo, esBasico, adj,
+  filas, campoCodigo, esBasico, adj, elegidos, onElegir,
 }: {
   filas: ItemDePlanConStock[];
   campoCodigo: "codigo" | "producto";
   esBasico: (item: ItemDePlanConStock) => boolean;
   adj: (v: number | null | undefined) => number;
+  elegidos?: Record<string, StockDeCodigo>;
+  onElegir?: (codigoOriginal: string, equivalente: StockDeCodigo | null) => void;
 }) {
   if (!filas.length) {
     return <p className="py-2 text-[13px] text-[var(--text-muted)]">No requiere {campoCodigo === "codigo" ? "repuestos" : "fluidos"}.</p>;
@@ -422,12 +463,20 @@ function TablaItems({
         <tbody>
           {filas.map((f, i) => {
             const codigo = campoCodigo === "codigo" ? f.codigo : f.producto;
+            const elegido = codigo ? elegidos?.[codigo] : undefined;
             const basico = esBasico(f);
             return (
               <tr key={i} className="border-b border-[var(--border)] last:border-0">
                 <td className="py-2 pr-2">{f.nombre}</td>
                 <td className="py-2 pr-2 font-mono text-[var(--text-muted)]">
-                  {codigo || (
+                  {elegido && codigo ? (
+                    <span className="flex flex-col">
+                      <span className="text-[var(--text-primary)]">{elegido.codigo}</span>
+                      <span className="text-[10.5px] font-sans text-[var(--text-muted)]">
+                        {elegido.marcaNombre} · reemplaza a {codigo}
+                      </span>
+                    </span>
+                  ) : (codigo || (
                     <span
                       title={campoCodigo === "codigo"
                         ? "La marca publica este service como precio cerrado: informa qué se cambia, no con qué número de pieza"
@@ -435,11 +484,18 @@ function TablaItems({
                     >
                       {campoCodigo === "codigo" ? "sin código de la marca" : "ver Lubricación recomendada"}
                     </span>
+                  ))}
+                  {codigo && (
+                    <EquivalentesDetalle
+                      equivalentes={f.equivalentes}
+                      codigoOriginal={codigo}
+                      elegido={elegido}
+                      onElegir={onElegir}
+                    />
                   )}
-                  {codigo && <EquivalentesDetalle equivalentes={f.equivalentes} />}
                 </td>
                 <td className="py-2 pr-2 text-center">{campoCodigo === "codigo" ? f.cantidad : (f.litros ?? "—")}</td>
-                <td className="py-2 pr-2"><StockDot item={f} /></td>
+                <td className="py-2 pr-2"><StockDot item={elegido ?? f} /></td>
                 <td className="py-2 text-right">{precioCelda(basico, f.total, adj)}</td>
               </tr>
             );
@@ -484,15 +540,23 @@ function exportarExcelCotizacion(
   plan: PlanConDetalle,
   marcaNombre: string,
   adj: (v: number | null | undefined) => number,
+  elegidos: Record<string, StockDeCodigo> = {},
 ) {
+  const codigoFinal = (original: string | null | undefined) =>
+    (original && elegidos[original]?.codigo) || original || "";
+  const reemplaza = (original: string | null | undefined) =>
+    original && elegidos[original] ? original : "";
+
   import("xlsx").then((XLSX) => {
     const filas = [
       ...plan.repuestos.map((r) => ({
-        Tipo: "Repuesto", Nombre: r.nombre, Código: r.codigo ?? "", Cantidad: r.cantidad,
+        Tipo: "Repuesto", Nombre: r.nombre, Código: codigoFinal(r.codigo), "Reemplaza a": reemplaza(r.codigo),
+        Cantidad: r.cantidad,
         "Total c/IVA": r.total != null ? adj(r.total) : "",
       })),
       ...plan.fluidos.map((f) => ({
-        Tipo: "Fluido", Nombre: f.nombre, Código: f.producto ?? "", Cantidad: f.litros ?? "",
+        Tipo: "Fluido", Nombre: f.nombre, Código: codigoFinal(f.producto), "Reemplaza a": reemplaza(f.producto),
+        Cantidad: f.litros ?? "",
         "Total c/IVA": f.total != null ? adj(f.total) : "",
       })),
     ];
