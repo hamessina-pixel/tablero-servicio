@@ -2,9 +2,9 @@
  * Acceso a datos de pedidos de compra. Espejo de
  * dashboard/backend/app/routers/pedidos.py.
  */
-import { and, asc, desc, eq, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { marcas, pedidoItems, pedidosCompra, repuestos } from "@/db/schema";
+import { listaCompra, marcas, pedidoItems, pedidosCompra, repuestos } from "@/db/schema";
 import { ahoraArgentinaISO } from "@/lib/fecha";
 
 export async function listarPedidos() {
@@ -76,8 +76,52 @@ export async function crearPedidoConItems(
     });
 
     const filas = await tx.insert(pedidoItems).values(items).returning();
+
+    const repuestoIds = candidatos.map((c) => c.id);
+    if (repuestoIds.length) await tx.delete(listaCompra).where(inArray(listaCompra.repuestoId, repuestoIds));
+
     return { pedido, items: filas };
   });
+}
+
+/** La lista de compra: carrito manual, arranca vacío. */
+export async function listarListaCompra(marcaId?: number) {
+  const condiciones = [];
+  if (marcaId) condiciones.push(eq(repuestos.marcaId, marcaId));
+
+  return db
+    .select({
+      id: repuestos.id,
+      codigo: repuestos.codigo,
+      nombre: repuestos.nombre,
+      marcaId: repuestos.marcaId,
+      marcaNombre: marcas.nombre,
+      stockActual: repuestos.stockActual,
+      stockMinimo: repuestos.stockMinimo,
+      precioPublico: repuestos.precioPublico,
+      precioCosto: repuestos.precioCosto,
+      agregadoEn: listaCompra.agregadoEn,
+    })
+    .from(listaCompra)
+    .innerJoin(repuestos, eq(repuestos.id, listaCompra.repuestoId))
+    .leftJoin(marcas, eq(marcas.id, repuestos.marcaId))
+    .where(condiciones.length ? and(...condiciones) : undefined)
+    .orderBy(asc(marcas.nombre), asc(repuestos.nombre));
+}
+
+export async function agregarAListaCompra(repuestoId: number) {
+  await db.insert(listaCompra)
+    .values({ repuestoId, agregadoEn: ahoraArgentinaISO() })
+    .onConflictDoNothing({ target: listaCompra.repuestoId });
+}
+
+export async function quitarDeListaCompra(repuestoId: number) {
+  await db.delete(listaCompra).where(eq(listaCompra.repuestoId, repuestoId));
+}
+
+export async function estaEnListaCompra(repuestoId: number) {
+  const [row] = await db.select({ id: listaCompra.id }).from(listaCompra).where(eq(listaCompra.repuestoId, repuestoId)).limit(1);
+  return Boolean(row);
 }
 
 export async function buscarPedidoPorId(pedidoId: number) {

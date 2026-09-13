@@ -82,6 +82,13 @@ export function RepuestoModal({
     try {
       await api.repuestos.actualizar(repuestoId, cambios);
       toast("Repuesto actualizado", "success");
+      if (puede("stock:editar") && gestionado) {
+        const actual = Number(stockActual) || 0;
+        const minimo = Number(stockMinimo) || 0;
+        if (actual < minimo && confirm(`Este repuesto quedó con stock bajo (${actual}/${minimo}). ¿Agregarlo a la lista de compra?`)) {
+          await api.pedidos.agregarAListaCompra(repuestoId).catch(() => {});
+        }
+      }
       onGuardado();
       onCerrar();
     } catch (err) {

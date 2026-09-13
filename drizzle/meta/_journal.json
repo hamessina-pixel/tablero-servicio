@@ -15,6 +15,13 @@
       "when": 1789255561122,
       "tag": "0001_kind_killraven",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789262276181,
+      "tag": "0002_elite_star_brand",
+      "breakpoints": true
     }
   ]
 }

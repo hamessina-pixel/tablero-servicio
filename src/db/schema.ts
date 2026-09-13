@@ -202,6 +202,21 @@ export const pedidoItems = pgTable("pedido_items", {
 }));
 
 // ---------------------------------------------------------------------------
+// Lista de compra: carrito manual de repuestos a pedir. Arranca vacía; un
+// repuesto entra solo cuando alguien lo agrega a propósito (al confirmar el
+// aviso de stock bajo, o a mano desde Pedidos). "Generar pedido" consume lo
+// que haya en esta lista, no toda la tabla de stock bajo.
+// ---------------------------------------------------------------------------
+
+export const listaCompra = pgTable("lista_compra", {
+  id: serial("id").primaryKey(),
+  repuestoId: integer("repuesto_id").notNull().references(() => repuestos.id),
+  agregadoEn: text("agregado_en").notNull(),
+}, (t) => ({
+  repuestoUnico: uniqueIndex("lista_compra_repuesto_unico").on(t.repuestoId),
+}));
+
+// ---------------------------------------------------------------------------
 // Cotizaciones guardadas: historial buscable por patente o cliente (no solo
 // el localStorage del navegador de quien cotizó).
 // ---------------------------------------------------------------------------

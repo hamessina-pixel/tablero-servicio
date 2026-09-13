@@ -112,6 +112,9 @@ export const api = {
   pedidos: {
     listar: () => get("/api/pedidos"),
     stockBajo: (marcaId?: number) => get(`/api/pedidos/stock-bajo${qs({ marcaId })}`),
+    listaCompra: (marcaId?: number) => get(`/api/pedidos/lista-compra${qs({ marcaId })}`),
+    agregarAListaCompra: (repuestoId: number) => post("/api/pedidos/lista-compra", { repuestoId }),
+    quitarDeListaCompra: (repuestoId: number) => del(`/api/pedidos/lista-compra/${repuestoId}`),
     crear: (datos: { marcaId?: number; nota?: string }) => post("/api/pedidos", datos),
     obtener: (id: number) => get(`/api/pedidos/${id}`),
     eliminar: (id: number) => del(`/api/pedidos/${id}`),

@@ -17,12 +17,26 @@ export function listarStockBajo(marcaId?: number) {
   return pedidosRepo.repuestosConStockBajo(marcaId);
 }
 
+export function listarListaCompra(marcaId?: number) {
+  return pedidosRepo.listarListaCompra(marcaId);
+}
+
+export async function agregarAListaCompra(actor: Usuario | null, repuestoId: number) {
+  exigirPermiso(actor, "pedidos:crear");
+  await pedidosRepo.agregarAListaCompra(repuestoId);
+}
+
+export async function quitarDeListaCompra(actor: Usuario | null, repuestoId: number) {
+  exigirPermiso(actor, "pedidos:crear");
+  await pedidosRepo.quitarDeListaCompra(repuestoId);
+}
+
 export async function crearPedido(actor: Usuario | null, datos: { marcaId?: number; nota?: string | null }) {
   const usuario = exigirPermiso(actor, "pedidos:crear");
 
-  const candidatos = await pedidosRepo.repuestosConStockBajo(datos.marcaId);
+  const candidatos = await pedidosRepo.listarListaCompra(datos.marcaId);
   if (!candidatos.length) {
-    throw new ValidationError("No hay repuestos con stock bajo para generar un pedido");
+    throw new ValidationError("La lista de compra está vacía: agregá repuestos antes de generar el pedido");
   }
   const { pedido, items } = await pedidosRepo.crearPedidoConItems(datos.nota ?? null, candidatos);
   await auditoriaRepo.registrar({

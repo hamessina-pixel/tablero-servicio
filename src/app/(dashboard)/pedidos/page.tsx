@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, ApiError } from "@/lib/apiClient";
 import { useMarcas } from "@/components/MarcasProvider";
@@ -41,14 +41,38 @@ function PedidosPageInner() {
     return v > 0 ? v : undefined;
   });
   const [stockBajo, setStockBajo] = useState<StockBajoItem[]>([]);
+  const [listaCompra, setListaCompra] = useState<StockBajoItem[]>([]);
   const [pedidos, setPedidos] = useState<PedidoResumen[]>([]);
   const [generando, setGenerando] = useState(false);
 
   function recargarStockBajo() { api.pedidos.stockBajo(marcaId).then((d) => setStockBajo(d as StockBajoItem[])); }
+  function recargarListaCompra() { api.pedidos.listaCompra(marcaId).then((d) => setListaCompra(d as StockBajoItem[])); }
   function recargarPedidos() { api.pedidos.listar().then((d) => setPedidos(d as PedidoResumen[])); }
 
   useEffect(recargarStockBajo, [marcaId]);
+  useEffect(recargarListaCompra, [marcaId]);
   useEffect(recargarPedidos, []);
+
+  const idsEnLista = useMemo(() => new Set(listaCompra.map((r) => r.id)), [listaCompra]);
+
+  async function agregar(repuestoId: number) {
+    if (!(await requirePermiso("pedidos:crear"))) return;
+    try {
+      await api.pedidos.agregarAListaCompra(repuestoId);
+      recargarListaCompra();
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "No se pudo agregar a la lista", "error");
+    }
+  }
+
+  async function quitar(repuestoId: number) {
+    try {
+      await api.pedidos.quitarDeListaCompra(repuestoId);
+      recargarListaCompra();
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "No se pudo quitar de la lista", "error");
+    }
+  }
 
   async function generarPedido() {
     if (!(await requirePermiso("pedidos:crear"))) return;
@@ -57,7 +81,7 @@ function PedidosPageInner() {
       const pedido = await api.pedidos.crear({ marcaId }) as { id: number; items: PedidoItem[] };
       toast(`Pedido generado con ${pedido.items.length} ítems`, "success");
       await exportarExcel(pedido.id);
-      recargarStockBajo();
+      recargarListaCompra();
       recargarPedidos();
     } catch (err) {
       toast(err instanceof ApiError ? err.message : "No se pudo generar el pedido", "error");
@@ -84,22 +108,29 @@ function PedidosPageInner() {
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="text-xl font-extrabold">Pedidos de compra</h1>
-        <p className="text-[13px] text-[var(--text-secondary)]">Repuestos con stock por debajo del mínimo, listos para generar un pedido.</p>
+        <p className="text-[13px] text-[var(--text-secondary)]">
+          Armá la lista de compra agregando repuestos con stock bajo, y generá el pedido cuando esté lista.
+        </p>
       </div>
 
       <Card>
-        <CardTitle>Stock bajo</CardTitle>
-        <div className="mb-3 mt-2 flex items-center gap-2">
+        <div className="mb-2 flex items-center gap-2">
+          <CardTitle>Lista de compra</CardTitle>
+        </div>
+        <p className="mb-3 text-[12px] text-[var(--text-muted)]">
+          Arranca vacía. Se llena con los repuestos que agregues desde &quot;Stock bajo&quot; más abajo.
+        </p>
+        <div className="mb-3 flex items-center gap-2">
           <Select value={marcaId ?? ""} onChange={(e) => setMarcaId(Number(e.target.value) || undefined)} className="max-w-[220px]">
             <option value="">Todas las marcas</option>
             {marcas.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
           </Select>
-          <Button variante="primary" className="ml-auto" disabled={!stockBajo.length || generando} onClick={generarPedido}>
+          <Button variante="primary" className="ml-auto" disabled={!listaCompra.length || generando} onClick={generarPedido}>
             Generar pedido de compra (Excel)
           </Button>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] text-left text-[13px]">
+          <table className="w-full min-w-[600px] text-left text-[13px]">
             <thead>
               <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-wide text-[var(--text-muted)]">
                 <th className="py-2 pr-2 font-semibold">Marca</th>
@@ -107,7 +138,44 @@ function PedidosPageInner() {
                 <th className="py-2 pr-2 font-semibold">Repuesto</th>
                 <th className="py-2 pr-2 font-semibold">Stock</th>
                 <th className="py-2 pr-2 text-right font-semibold">Faltan</th>
-                <th className="py-2 text-right font-semibold">Precio público</th>
+                <th className="py-2 pr-2 text-right font-semibold">Precio público</th>
+                <th className="py-2 font-semibold"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {listaCompra.map((r) => (
+                <tr key={r.id} className="border-b border-[var(--border)] last:border-0">
+                  <td className="py-2 pr-2">{r.marcaNombre}</td>
+                  <td className="py-2 pr-2 font-mono">{r.codigo}</td>
+                  <td className="py-2 pr-2">{r.nombre}</td>
+                  <td className="py-2 pr-2"><Badge tono="critical">{r.stockActual} / {r.stockMinimo}</Badge></td>
+                  <td className="py-2 pr-2 text-right">{(r.stockMinimo ?? 0) - (r.stockActual ?? 0)}</td>
+                  <td className="py-2 pr-2 text-right">{r.precioPublico != null ? money(r.precioPublico) : "sin precio"}</td>
+                  <td className="py-2 text-right"><Button tamano="sm" variante="danger" onClick={() => quitar(r.id)}>Quitar</Button></td>
+                </tr>
+              ))}
+              {listaCompra.length === 0 && (
+                <tr><td colSpan={7} className="py-6 text-center text-[var(--text-muted)]">Todavía no agregaste nada a la lista de compra.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card>
+        <CardTitle>Stock bajo</CardTitle>
+        <p className="mb-3 text-[12px] text-[var(--text-muted)]">Repuestos por debajo del mínimo. Agregalos a la lista de compra para incluirlos en el próximo pedido.</p>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[600px] text-left text-[13px]">
+            <thead>
+              <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-wide text-[var(--text-muted)]">
+                <th className="py-2 pr-2 font-semibold">Marca</th>
+                <th className="py-2 pr-2 font-semibold">Código</th>
+                <th className="py-2 pr-2 font-semibold">Repuesto</th>
+                <th className="py-2 pr-2 font-semibold">Stock</th>
+                <th className="py-2 pr-2 text-right font-semibold">Faltan</th>
+                <th className="py-2 pr-2 text-right font-semibold">Precio público</th>
+                <th className="py-2 font-semibold"></th>
               </tr>
             </thead>
             <tbody>
@@ -118,11 +186,16 @@ function PedidosPageInner() {
                   <td className="py-2 pr-2">{r.nombre}</td>
                   <td className="py-2 pr-2"><Badge tono="critical">{r.stockActual} / {r.stockMinimo}</Badge></td>
                   <td className="py-2 pr-2 text-right">{(r.stockMinimo ?? 0) - (r.stockActual ?? 0)}</td>
-                  <td className="py-2 text-right">{r.precioPublico != null ? money(r.precioPublico) : "sin precio"}</td>
+                  <td className="py-2 pr-2 text-right">{r.precioPublico != null ? money(r.precioPublico) : "sin precio"}</td>
+                  <td className="py-2 text-right">
+                    {idsEnLista.has(r.id)
+                      ? <Badge tono="good">En la lista</Badge>
+                      : <Button tamano="sm" onClick={() => agregar(r.id)}>Agregar a la lista</Button>}
+                  </td>
                 </tr>
               ))}
               {stockBajo.length === 0 && (
-                <tr><td colSpan={6} className="py-6 text-center text-[var(--text-muted)]">Sin códigos con stock bajo.</td></tr>
+                <tr><td colSpan={7} className="py-6 text-center text-[var(--text-muted)]">Sin códigos con stock bajo.</td></tr>
               )}
             </tbody>
           </table>
