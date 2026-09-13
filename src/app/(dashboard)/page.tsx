@@ -24,9 +24,11 @@ export default function InicioPage() {
   const { colorMarca, cargando: cargandoMarcas } = useMarcas();
   const [r, setR] = useState<ResumenDashboard | null>(null);
   const [planes, setPlanes] = useState<ResumenPorModelo[]>([]);
+  const [sinAcceso, setSinAcceso] = useState(false);
 
   useEffect(() => {
-    api.dashboard.resumen().then(setR);
+    // El resumen del negocio (plata en stock, márgenes) pide sesión.
+    api.dashboard.resumen().then(setR).catch(() => setSinAcceso(true));
     api.planes.resumen().then(setPlanes);
   }, []);
 
@@ -41,6 +43,26 @@ export default function InicioPage() {
       .map(([marca, e]) => ({ marca, promedio: e.n ? e.suma / e.n : 0 }))
       .sort((a, b) => b.promedio - a.promedio);
   })();
+
+  if (sinAcceso) {
+    return (
+      <div className="flex flex-col gap-5">
+        <Card>
+          <CardTitle>Accesos rápidos</CardTitle>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button onClick={() => router.push("/repuestos")}>Buscar un repuesto</Button>
+            <Button onClick={() => router.push("/cotizador")}>Ir al cotizador</Button>
+            <Button onClick={() => router.push("/sustituciones")}>Ver sustituciones</Button>
+          </div>
+        </Card>
+        <Card>
+          <p className="text-[13px] text-[var(--text-secondary)]">
+            Iniciá sesión para ver el resumen del negocio: valor del stock, códigos faltantes y costos por marca.
+          </p>
+        </Card>
+      </div>
+    );
+  }
 
   if (!r || cargandoMarcas) {
     return <div className="py-16 text-center text-[13px] text-[var(--text-muted)]">Cargando…</div>;

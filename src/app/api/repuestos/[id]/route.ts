@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import * as repuestosService from "@/services/repuestos.service";
 import { errorResponse, requireIntParam } from "@/lib/http";
 import { usuarioActualDesde } from "@/lib/sesion";
+import { sinCostoSiNoHaySesion } from "@/lib/visibilidad";
 
-export async function GET(_req: Request, ctx: RouteContext<"/api/repuestos/[id]">) {
+export async function GET(req: NextRequest, ctx: RouteContext<"/api/repuestos/[id]">) {
   try {
     const { id } = await ctx.params;
+    const { usuario } = await usuarioActualDesde(req);
     const data = await repuestosService.obtenerRepuesto(requireIntParam(id, "id"));
-    return NextResponse.json(data);
+    return NextResponse.json({
+      ...sinCostoSiNoHaySesion(data, usuario),
+      equivalentes: data.equivalentes.map((e) => sinCostoSiNoHaySesion(e, usuario)),
+    });
   } catch (err) {
     return errorResponse(err);
   }

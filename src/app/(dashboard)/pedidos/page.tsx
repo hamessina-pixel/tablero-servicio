@@ -46,7 +46,11 @@ function PedidosPageInner() {
   const [pedidos, setPedidos] = useState<PedidoResumen[]>([]);
   const [generando, setGenerando] = useState(false);
 
-  function recargarStockBajo() { api.pedidos.stockBajo(marcaId).then((d) => setStockBajo(d as StockBajoItem[])); }
+  // Sin sesión no se lista qué falta ni a qué costo reponerlo: la pantalla
+  // queda vacía en vez de romperse.
+  function recargarStockBajo() {
+    api.pedidos.stockBajo(marcaId).then((d) => setStockBajo(d as StockBajoItem[])).catch(() => setStockBajo([]));
+  }
   function recargarListaCompra() { api.pedidos.listaCompra(marcaId).then((d) => setListaCompra(d as StockBajoItem[])); }
   function recargarPedidos() { api.pedidos.listar().then((d) => setPedidos(d as PedidoResumen[])); }
 

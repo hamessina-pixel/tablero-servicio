@@ -3,10 +3,12 @@ import * as repuestosService from "@/services/repuestos.service";
 import { ValidationError } from "@/domain/errors";
 import { errorResponse, parseBoolParam, parseIntParamOpcional } from "@/lib/http";
 import { usuarioActualDesde } from "@/lib/sesion";
+import { sinCostoSiNoHaySesion } from "@/lib/visibilidad";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = req.nextUrl;
+    const { usuario } = await usuarioActualDesde(req);
     const data = await repuestosService.listarRepuestos({
       marcaId: parseIntParamOpcional(searchParams.get("marcaId"), "marcaId"),
       categoria: searchParams.get("categoria") ?? undefined,
@@ -16,7 +18,7 @@ export async function GET(req: NextRequest) {
       page: parseIntParamOpcional(searchParams.get("page"), "page"),
       pageSize: parseIntParamOpcional(searchParams.get("pageSize"), "pageSize"),
     });
-    return NextResponse.json(data);
+    return NextResponse.json({ ...data, items: data.items.map((r) => sinCostoSiNoHaySesion(r, usuario)) });
   } catch (err) {
     return errorResponse(err);
   }
