@@ -148,6 +148,58 @@ export async function actualizarRepuesto(
   return actualizado;
 }
 
+/**
+ * Registra una sustitución verificada en el portal de piezas de la terminal
+ * (Fiat LinkEntry u homólogo): deja asentada la equivalencia código anterior
+ * -> nuevo en `sustituciones` (para que la búsqueda de equivalentes la
+ * encuentre), y actualiza el repuesto con el código y precios nuevos.
+ */
+export async function registrarSustitucionFiat(
+  actor: Usuario | null,
+  repuestoId: number,
+  datos: {
+    codigoNuevo: string;
+    precioPublico?: number | null;
+    precioCosto?: number | null;
+  },
+) {
+  const usuario = await exigirPermiso(actor, "repuestos:crear");
+  if (datos.precioPublico != null || datos.precioCosto != null) {
+    await exigirPermiso(usuario, "precios:editar");
+  }
+
+  const existente = await repuestosRepo.buscarRepuestoPorId(repuestoId);
+  if (!existente) throw new NotFoundError("Repuesto no encontrado");
+
+  const codigoNuevo = datos.codigoNuevo.trim();
+  if (!codigoNuevo) throw new ValidationError("El código nuevo no puede quedar vacío");
+  if (codigoNuevo === existente.codigo) {
+    throw new ValidationError("El código nuevo es igual al actual");
+  }
+  const yaExiste = await repuestosRepo.existeOtroConCodigo(existente.marcaId, codigoNuevo, repuestoId);
+  if (yaExiste) throw new ConflictError("Ya existe un repuesto con ese código para esta marca");
+
+  await sustitucionesRepo.crearSustitucion({
+    marcaId: existente.marcaId,
+    codigoAnterior: existente.codigo,
+    codigoNuevo,
+    clase: "S",
+  });
+
+  const actualizado = await repuestosRepo.actualizarRepuesto(repuestoId, {
+    codigo: codigoNuevo,
+    precioPublico: datos.precioPublico ?? undefined,
+    precioCosto: datos.precioCosto ?? undefined,
+  });
+
+  await auditoriaRepo.registrar({
+    usuarioId: usuario.id, accion: "sustituir", entidad: "repuesto", entidadId: repuestoId,
+    detalle: `${existente.codigo} -> ${codigoNuevo}`, fecha: ahoraArgentinaISO(),
+  });
+
+  return actualizado;
+}
+
 export async function crearRepuesto(
   actor: Usuario | null,
   datos: {

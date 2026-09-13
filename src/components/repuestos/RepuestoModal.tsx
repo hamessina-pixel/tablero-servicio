@@ -37,6 +37,11 @@ export function RepuestoModal({
   const [stockMinimo, setStockMinimo] = useState("");
   const [gestionado, setGestionado] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [mostrarSustitucion, setMostrarSustitucion] = useState(false);
+  const [codigoNuevoFiat, setCodigoNuevoFiat] = useState("");
+  const [precioPublicoFiat, setPrecioPublicoFiat] = useState("");
+  const [precioCostoFiat, setPrecioCostoFiat] = useState("");
+  const [aplicandoSustitucion, setAplicandoSustitucion] = useState(false);
 
   useEffect(() => {
     api.repuestos.obtener(repuestoId).then((d) => {
@@ -95,6 +100,27 @@ export function RepuestoModal({
       toast(err instanceof ApiError ? err.message : "No se pudo guardar", "error");
     } finally {
       setGuardando(false);
+    }
+  }
+
+  async function aplicarSustitucion() {
+    const entro = await requireAuth();
+    if (!entro) return;
+    if (!codigoNuevoFiat.trim()) { toast("Ingresá el código nuevo informado por Fiat", "error"); return; }
+    setAplicandoSustitucion(true);
+    try {
+      await api.repuestos.registrarSustitucion(repuestoId, {
+        codigoNuevo: codigoNuevoFiat.trim(),
+        precioPublico: precioPublicoFiat ? Number(precioPublicoFiat) : undefined,
+        precioCosto: precioCostoFiat ? Number(precioCostoFiat) : undefined,
+      });
+      toast("Sustitución registrada", "success");
+      onGuardado();
+      onCerrar();
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "No se pudo registrar la sustitución", "error");
+    } finally {
+      setAplicandoSustitucion(false);
     }
   }
 
@@ -170,6 +196,45 @@ export function RepuestoModal({
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {puedeCatalogo && (
+          <div className="mt-5 rounded-[var(--radius-md)] border border-[var(--border)] p-3">
+            {!mostrarSustitucion ? (
+              <button
+                className="text-[12.5px] font-semibold text-[var(--brand)] hover:underline"
+                onClick={() => { setCodigoNuevoFiat(""); setPrecioPublicoFiat(""); setPrecioCostoFiat(""); setMostrarSustitucion(true); }}
+              >
+                Registrar sustitución (verificada en Fiat LinkEntry)
+              </button>
+            ) : (
+              <>
+                <p className="mb-2 text-[12.5px] font-bold">Sustitución verificada en Fiat LinkEntry</p>
+                <p className="mb-2 text-[12px] text-[var(--text-muted)]">
+                  Reemplaza el código <span className="font-mono">{detalle.codigo}</span> por el nuevo número informado
+                  por la terminal, actualiza sus precios y deja la equivalencia asentada para futuras búsquedas.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Campo label="Código nuevo (Fiat)">
+                    <Input className="font-mono" value={codigoNuevoFiat} onChange={(e) => setCodigoNuevoFiat(e.target.value)} />
+                  </Campo>
+                  <div />
+                  <Campo label="Precio público nuevo">
+                    <Input type="number" value={precioPublicoFiat} onChange={(e) => setPrecioPublicoFiat(e.target.value)} disabled={!puedePrecios} />
+                  </Campo>
+                  <Campo label="Precio costo nuevo">
+                    <Input type="number" value={precioCostoFiat} onChange={(e) => setPrecioCostoFiat(e.target.value)} disabled={!puedePrecios} />
+                  </Campo>
+                </div>
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button tamano="sm" onClick={() => setMostrarSustitucion(false)}>Cancelar</Button>
+                  <Button tamano="sm" variante="primary" onClick={aplicarSustitucion} disabled={aplicandoSustitucion}>
+                    Aplicar sustitución
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         )}
 

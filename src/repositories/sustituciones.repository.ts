@@ -86,3 +86,23 @@ export async function buscarSustitucionesDeCodigo(codigo: string) {
     .from(sustituciones)
     .where(or(eq(sustituciones.codigoAnterior, codigo), eq(sustituciones.codigoNuevo, codigo)));
 }
+
+/** Registra una equivalencia código anterior -> nuevo (p.ej. verificada a mano
+ *  contra el portal de piezas de la terminal). */
+export async function crearSustitucion(datos: {
+  marcaId: number | null;
+  codigoAnterior: string;
+  codigoNuevo: string;
+  clase?: string | null;
+}) {
+  const [row] = await db
+    .insert(sustituciones)
+    .values({
+      marcaId: datos.marcaId,
+      codigoAnterior: datos.codigoAnterior,
+      codigoNuevo: datos.codigoNuevo,
+      clase: datos.clase ?? "S",
+    })
+    .returning();
+  return row;
+}

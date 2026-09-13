@@ -79,6 +79,8 @@ export const api = {
     equivalentes: (codigo: string) => get(`/api/repuestos/equivalentes${qs({ codigo })}`),
     obtener: (id: number) => get(`/api/repuestos/${id}`),
     actualizar: (id: number, cambios: Record<string, unknown>) => put(`/api/repuestos/${id}`, cambios),
+    registrarSustitucion: (id: number, datos: { codigoNuevo: string; precioPublico?: number | null; precioCosto?: number | null }) =>
+      post(`/api/repuestos/${id}/sustitucion`, datos),
     crear: (datos: Record<string, unknown>) => post(`/api/repuestos`, datos),
     eliminar: (id: number) => del(`/api/repuestos/${id}`),
   },
