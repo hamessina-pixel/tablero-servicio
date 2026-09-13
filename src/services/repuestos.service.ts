@@ -209,7 +209,7 @@ export async function actualizarPreciosMasivo(
   actor: Usuario | null,
   marcaId: number,
   filas: repuestosRepo.FilaPrecioLote[],
-  opciones: { auditar?: boolean } = {},
+  opciones: { origen?: string } = {},
 ) {
   const usuario = await exigirPermiso(actor, "precios:editar");
 
@@ -224,34 +224,20 @@ export async function actualizarPreciosMasivo(
     noEncontrados: limpias.length - existentes,
   };
 
-  // Una importación grande se manda en lotes: se audita una sola vez, al
-  // cerrar, para no ensuciar la auditoría con una fila por lote.
-  if (opciones.auditar !== false) {
+  // Se audita cada lote que haya cambiado algo, con los números que contó el
+  // propio servidor. Antes el total lo mandaba el cliente al cerrar, y también
+  // podía pedir que no se auditara: así una importación entera podía pisar la
+  // lista de precios sin dejar rastro, o dejar uno inventado.
+  if (resultado.actualizados > 0) {
     await auditoriaRepo.registrar({
       usuarioId: usuario.id, accion: "editar", entidad: "repuesto",
-      detalle: `Importación de precios: ${resultado.actualizados} actualizados, ` +
-               `${resultado.sinCambios} sin cambios, ${resultado.noEncontrados} no encontrados`,
+      detalle: `Importación de precios${opciones.origen ? ` (${opciones.origen})` : ""}: ` +
+               `${resultado.actualizados} actualizados de ${limpias.length} enviados`,
       fecha: ahoraArgentinaISO(),
     });
   }
 
   return resultado;
-}
-
-/** Cierra una importación por lotes dejando un solo registro de auditoría con
- *  los totales acumulados del lado del cliente. */
-export async function auditarImportacionPrecios(
-  actor: Usuario | null,
-  resumen: { actualizados: number; sinCambios: number; noEncontrados: number; origen?: string },
-) {
-  const usuario = await exigirPermiso(actor, "precios:editar");
-  await auditoriaRepo.registrar({
-    usuarioId: usuario.id, accion: "editar", entidad: "repuesto",
-    detalle: `Importación de precios${resumen.origen ? ` (${resumen.origen})` : ""}: ` +
-             `${resumen.actualizados} actualizados, ${resumen.sinCambios} sin cambios, ` +
-             `${resumen.noEncontrados} no encontrados`,
-    fecha: ahoraArgentinaISO(),
-  });
 }
 
 export async function crearRepuesto(

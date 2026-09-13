@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/apiClient";
+import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/components/Toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -21,6 +22,7 @@ interface CotizacionGuardada {
 
 export function HistorialTab({ onCargar }: { onCargar: (s: SeleccionCotizador) => void }) {
   const toast = useToast();
+  const { requireAuth } = useAuth();
   const [historial, setHistorial] = useState<EntradaHistorial[]>([]);
   const [q, setQ] = useState("");
   const [resultados, setResultados] = useState<CotizacionGuardada[]>([]);
@@ -57,7 +59,9 @@ export function HistorialTab({ onCargar }: { onCargar: (s: SeleccionCotizador) =
     localStorage.setItem(HISTORIAL_KEY, JSON.stringify(copia));
   }
 
-  function abrirEdicion(r: CotizacionGuardada) {
+  async function abrirEdicion(r: CotizacionGuardada) {
+    // Editar y borrar tocan datos de clientes de todo el taller: piden sesión.
+    if (!(await requireAuth())) return;
     setEditando(r.id);
     setPatenteEdit(r.patente ?? "");
     setClienteEdit(r.cliente ?? "");
@@ -75,6 +79,7 @@ export function HistorialTab({ onCargar }: { onCargar: (s: SeleccionCotizador) =
   }
 
   async function borrarGuardada(id: number) {
+    if (!(await requireAuth())) return;
     if (!confirm("¿Borrar esta cotización guardada? No se puede deshacer.")) return;
     try {
       await api.cotizacionesGuardadas.eliminar(id);

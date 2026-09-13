@@ -25,3 +25,8 @@ export function ahoraArgentinaISO(): string {
 export function argentinaISOEnDias(dias: number): string {
   return new Date(ahoraArgentinaMs() + dias * 24 * 60 * 60 * 1000).toISOString().slice(0, 19);
 }
+
+/** "Ahora" + N minutos — para la pausa del login tras varios intentos fallidos. */
+export function argentinaISOEnMinutos(minutos: number): string {
+  return new Date(ahoraArgentinaMs() + minutos * 60 * 1000).toISOString().slice(0, 19);
+}

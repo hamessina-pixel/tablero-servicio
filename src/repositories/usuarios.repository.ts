@@ -74,6 +74,26 @@ export async function actualizarUltimoAcceso(id: number, fecha: string): Promise
   await db.update(usuarios).set({ ultimoAcceso: fecha }).where(eq(usuarios.id, id));
 }
 
+/** Suma un intento fallido y devuelve cuántos van seguidos. El incremento se
+ *  hace en la base (no leyendo y escribiendo desde la app) para que dos
+ *  intentos simultáneos no se pisen el contador. */
+export async function sumarIntentoFallido(id: number): Promise<number> {
+  const [row] = await db
+    .update(usuarios)
+    .set({ intentosFallidos: sql`${usuarios.intentosFallidos} + 1` })
+    .where(eq(usuarios.id, id))
+    .returning({ intentos: usuarios.intentosFallidos });
+  return row?.intentos ?? 0;
+}
+
+export async function bloquearHasta(id: number, hasta: string): Promise<void> {
+  await db.update(usuarios).set({ bloqueadoHasta: hasta, intentosFallidos: 0 }).where(eq(usuarios.id, id));
+}
+
+export async function limpiarIntentos(id: number): Promise<void> {
+  await db.update(usuarios).set({ intentosFallidos: 0, bloqueadoHasta: null }).where(eq(usuarios.id, id));
+}
+
 export async function eliminar(id: number): Promise<void> {
   await db.delete(usuarios).where(eq(usuarios.id, id));
 }

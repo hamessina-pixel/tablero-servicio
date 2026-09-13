@@ -1,9 +1,13 @@
 /**
- * Historial de cotizaciones guardadas: buscable por patente o cliente, sin
- * gate de permiso (espeja el criterio anterior en localStorage: cualquiera
- * podía guardar y volver a cargar una cotización).
+ * Historial de cotizaciones guardadas: buscable por patente o cliente.
+ *
+ * Guardar y buscar quedan abiertos (espeja el criterio anterior en
+ * localStorage: cualquiera en el taller podía guardar y volver a cargar una
+ * cotización, sin loguearse). Editar y borrar NO: son destructivos sobre
+ * datos de clientes, así que exigen una sesión válida.
  */
 import * as repo from "@/repositories/cotizacionesGuardadas.repository";
+import { requireUsuario } from "@/services/auth.service";
 import { NotFoundError, ValidationError } from "@/domain/errors";
 import type { Usuario } from "@/domain/types";
 
@@ -31,13 +35,19 @@ export async function buscarCotizaciones(q?: string) {
   return repo.buscarCotizacionesGuardadas(texto);
 }
 
-export async function actualizarCotizacion(id: number, cambios: { patente?: string; cliente?: string }) {
+export async function actualizarCotizacion(
+  actor: Usuario | null,
+  id: number,
+  cambios: { patente?: string; cliente?: string },
+) {
+  requireUsuario(actor);
   const existente = await repo.buscarCotizacionGuardadaPorId(id);
   if (!existente) throw new NotFoundError("Cotización no encontrada");
   return repo.actualizarCotizacionGuardada(id, cambios);
 }
 
-export async function eliminarCotizacion(id: number) {
+export async function eliminarCotizacion(actor: Usuario | null, id: number) {
+  requireUsuario(actor);
   const existente = await repo.buscarCotizacionGuardadaPorId(id);
   if (!existente) throw new NotFoundError("Cotización no encontrada");
   await repo.eliminarCotizacionGuardada(id);

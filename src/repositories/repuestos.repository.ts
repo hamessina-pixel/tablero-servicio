@@ -9,6 +9,7 @@
 import { and, asc, desc, eq, ilike, inArray, lt, ne, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db/client";
 import { marcas, planRepuestos, repuestos } from "@/db/schema";
+import { ValidationError } from "@/domain/errors";
 import type { Repuesto } from "@/domain/types";
 
 export interface RepuestoConMarca extends Repuesto {
@@ -267,6 +268,12 @@ export async function actualizarPreciosLote(marcaId: number, filas: FilaPrecioLo
   if (!filas.length) return { actualizados: [] as string[], existentes: 0 };
 
   const SEP = "";
+  // Los cuatro arrays se reparten por posición: si un código trajera el
+  // separador, `string_to_array` los desalinearía y cada precio terminaría en
+  // la pieza equivocada. Ningún código legítimo lo contiene.
+  if (filas.some((f) => f.codigo.includes(SEP))) {
+    throw new ValidationError("Hay códigos con caracteres de control; revisá el archivo de origen");
+  }
   const codigos = filas.map((f) => f.codigo).join(SEP);
   const numero = (v: number | null | undefined) => (v == null ? "" : String(v));
   const publicos = filas.map((f) => numero(f.precioPublico)).join(SEP);

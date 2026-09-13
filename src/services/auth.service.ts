@@ -10,14 +10,26 @@
 import * as usuariosRepo from "@/repositories/usuarios.repository";
 import * as sesionesRepo from "@/repositories/sesiones.repository";
 import { hashPassword, hashToken, verificarPassword, generarTokenSesion } from "@/lib/crypto";
-import { ahoraArgentinaISO, argentinaISOEnDias } from "@/lib/fecha";
+import { ahoraArgentinaISO, argentinaISOEnDias, argentinaISOEnMinutos } from "@/lib/fecha";
 import { labelDeRol, ROL_POR_DEFECTO } from "@/domain/roles";
 import { permisosDe, rolesConPermisos, tienePermiso } from "@/services/permisos.service";
 import { ConflictError, ForbiddenError, UnauthorizedError, ValidationError } from "@/domain/errors";
 import type { Usuario } from "@/domain/types";
 
-const MIN_LARGO_PASSWORD = 4;
+const MIN_LARGO_PASSWORD = 8;
 export const SESION_DIAS = 30;
+
+/** Tras esta cantidad de fallos seguidos, la cuenta queda en pausa. Es un
+ *  taller: el margen es holgado para no trabar a alguien que se equivoca
+ *  tipeando, pero corta en seco un ataque por diccionario. */
+const MAX_INTENTOS_FALLIDOS = 8;
+const MINUTOS_BLOQUEO = 15;
+
+/** Salt de descarte para gastar el mismo tiempo de CPU cuando el usuario no
+ *  existe. Sin esto, un login inexistente responde en ~1 ms y uno existente en
+ *  ~100 ms (las 200.000 iteraciones de PBKDF2), y esa diferencia sola permite
+ *  averiguar qué nombres de usuario son válidos. */
+const SALT_DESCARTE = "0".repeat(32);
 
 export function validarPassword(password: string): void {
   if (password.length < MIN_LARGO_PASSWORD) {
@@ -104,9 +116,30 @@ export async function registro(datos: { nombre: string; usuario: string; passwor
 
 export async function login(usuarioCrudo: string, password: string) {
   const row = await usuariosRepo.buscarPorUsuario(usuarioCrudo.trim());
-  if (!row || !verificarPassword(password, row.passwordHash, row.passwordSalt)) {
+
+  if (!row) {
+    // Se deriva igual contra un salt de descarte para que el tiempo de
+    // respuesta no delate que el usuario no existe.
+    hashPassword(password, SALT_DESCARTE);
     throw new UnauthorizedError("Usuario o contraseña incorrectos");
   }
+
+  if (row.bloqueadoHasta && row.bloqueadoHasta > ahoraArgentinaISO()) {
+    throw new ForbiddenError(
+      `Demasiados intentos fallidos. Probá de nuevo en unos minutos o pedile a un administrador que te reactive`,
+    );
+  }
+
+  if (!verificarPassword(password, row.passwordHash, row.passwordSalt)) {
+    const fallidos = await usuariosRepo.sumarIntentoFallido(row.id);
+    if (fallidos >= MAX_INTENTOS_FALLIDOS) {
+      await usuariosRepo.bloquearHasta(row.id, argentinaISOEnMinutos(MINUTOS_BLOQUEO));
+    }
+    throw new UnauthorizedError("Usuario o contraseña incorrectos");
+  }
+
+  await usuariosRepo.limpiarIntentos(row.id);
+
   if (!row.activo) {
     // La contraseña era correcta: decirle por qué no entra evita que vuelva a
     // intentar diez veces creyendo que se equivocó de clave.

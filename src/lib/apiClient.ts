@@ -86,13 +86,11 @@ export const api = {
     importarPrecios: (
       marcaId: number,
       filas: { codigo: string; precioPublico?: number | null; precioCosto?: number | null; descuentoPct?: number | null }[],
-      auditar = true,
+      origen?: string,
     ) =>
       post<{ actualizados: number; sinCambios: number; noEncontrados: number }>(
-        `/api/repuestos/importar-precios`, { marcaId, filas, auditar },
+        `/api/repuestos/importar-precios`, { marcaId, filas, origen },
       ),
-    auditarImportacionPrecios: (resumen: { actualizados: number; sinCambios: number; noEncontrados: number; origen?: string }) =>
-      patch<{ ok: true }>(`/api/repuestos/importar-precios`, resumen),
     crear: (datos: Record<string, unknown>) => post(`/api/repuestos`, datos),
     eliminar: (id: number) => del(`/api/repuestos/${id}`),
   },

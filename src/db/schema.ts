@@ -285,6 +285,12 @@ export const usuarios = pgTable("usuarios", {
   pendiente: boolean("pendiente").notNull().default(false),
   creadoEn: text("creado_en").notNull(),
   ultimoAcceso: text("ultimo_acceso"),
+  // Freno de fuerza bruta: el login cuenta los fallos seguidos y, pasado el
+  // límite, deja la cuenta en pausa hasta esta fecha. Un login correcto los
+  // borra. Vive en la base porque la app corre sin estado (serverless): un
+  // contador en memoria no se comparte entre instancias.
+  intentosFallidos: integer("intentos_fallidos").notNull().default(0),
+  bloqueadoHasta: text("bloqueado_hasta"),
 });
 
 /** Qué permiso tiene cada rol — editable desde la pantalla de Usuarios, no

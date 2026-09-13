@@ -102,14 +102,14 @@ export function ImportarPreciosModal({
     setProgreso({ hechas: 0, total });
     const acumulado = { actualizados: 0, sinCambios: 0, noEncontrados: 0 };
     try {
+      const origen = nombreArchivo || "pegado a mano";
       for (let i = 0; i < filas.length; i += TAM_LOTE) {
-        const r = await api.repuestos.importarPrecios(marcaId, filas.slice(i, i + TAM_LOTE), false);
+        const r = await api.repuestos.importarPrecios(marcaId, filas.slice(i, i + TAM_LOTE), origen);
         acumulado.actualizados += r.actualizados;
         acumulado.sinCambios += r.sinCambios;
         acumulado.noEncontrados += r.noEncontrados;
         setProgreso({ hechas: Math.floor(i / TAM_LOTE) + 1, total });
       }
-      await api.repuestos.auditarImportacionPrecios({ ...acumulado, origen: nombreArchivo || "pegado a mano" });
       setResultado(acumulado);
       toast(`${acumulado.actualizados} precios actualizados`, "success");
       onImportado();

@@ -33,6 +33,8 @@ export async function usuarioDeSesionVigente(tokenHash: string): Promise<Usuario
       pendiente: usuarios.pendiente,
       creadoEn: usuarios.creadoEn,
       ultimoAcceso: usuarios.ultimoAcceso,
+      intentosFallidos: usuarios.intentosFallidos,
+      bloqueadoHasta: usuarios.bloqueadoHasta,
     })
     .from(sesiones)
     .innerJoin(usuarios, eq(usuarios.id, sesiones.usuarioId))

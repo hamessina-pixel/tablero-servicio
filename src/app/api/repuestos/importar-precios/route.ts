@@ -23,32 +23,16 @@ function validarBody(body: unknown) {
       };
     })
     .filter((f) => f.codigo.trim());
-  return { marcaId, filas, auditar: b.auditar !== false };
+  const origen = typeof b.origen === "string" ? b.origen.slice(0, 120) : undefined;
+  return { marcaId, filas, origen };
 }
 
 export async function POST(req: NextRequest) {
   try {
     const { usuario: actor } = await usuarioActualDesde(req);
-    const { marcaId, filas, auditar } = validarBody(await req.json().catch(() => null));
-    const data = await repuestosService.actualizarPreciosMasivo(actor, marcaId, filas, { auditar });
+    const { marcaId, filas, origen } = validarBody(await req.json().catch(() => null));
+    const data = await repuestosService.actualizarPreciosMasivo(actor, marcaId, filas, { origen });
     return NextResponse.json(data);
-  } catch (err) {
-    return errorResponse(err);
-  }
-}
-
-/** Cierre de una importación por lotes: deja el registro único de auditoría. */
-export async function PATCH(req: NextRequest) {
-  try {
-    const { usuario: actor } = await usuarioActualDesde(req);
-    const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-    await repuestosService.auditarImportacionPrecios(actor, {
-      actualizados: Number(b.actualizados) || 0,
-      sinCambios: Number(b.sinCambios) || 0,
-      noEncontrados: Number(b.noEncontrados) || 0,
-      origen: typeof b.origen === "string" ? b.origen : undefined,
-    });
-    return NextResponse.json({ ok: true });
   } catch (err) {
     return errorResponse(err);
   }

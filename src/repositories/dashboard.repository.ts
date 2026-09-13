@@ -7,7 +7,18 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 
-export async function contarFilas(tabla: string, whereSql?: ReturnType<typeof sql>) {
+/** Las tablas que este panel puede contar. El nombre de la tabla no se puede
+ *  pasar como parámetro de SQL, va interpolado con `sql.raw`, así que se
+ *  acepta solo de esta lista: si mañana alguien llama a `contarFilas` con algo
+ *  que venga de la URL, corta acá y no en la base. */
+const TABLAS_CONTABLES = [
+  "marcas", "modelos", "repuestos", "fluidos", "planes_mantenimiento", "sustituciones",
+] as const;
+
+type TablaContable = (typeof TABLAS_CONTABLES)[number];
+
+export async function contarFilas(tabla: TablaContable, whereSql?: ReturnType<typeof sql>) {
+  if (!TABLAS_CONTABLES.includes(tabla)) throw new Error(`Tabla no permitida: ${tabla}`);
   const query = whereSql
     ? sql`SELECT COUNT(*)::int AS n FROM ${sql.raw(tabla)} WHERE ${whereSql}`
     : sql`SELECT COUNT(*)::int AS n FROM ${sql.raw(tabla)}`;
