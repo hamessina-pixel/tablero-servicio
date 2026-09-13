@@ -22,17 +22,17 @@ export function listarListaCompra(marcaId?: number) {
 }
 
 export async function agregarAListaCompra(actor: Usuario | null, repuestoId: number) {
-  exigirPermiso(actor, "pedidos:crear");
+  await exigirPermiso(actor, "pedidos:crear");
   await pedidosRepo.agregarAListaCompra(repuestoId);
 }
 
 export async function quitarDeListaCompra(actor: Usuario | null, repuestoId: number) {
-  exigirPermiso(actor, "pedidos:crear");
+  await exigirPermiso(actor, "pedidos:crear");
   await pedidosRepo.quitarDeListaCompra(repuestoId);
 }
 
 export async function crearPedido(actor: Usuario | null, datos: { marcaId?: number; nota?: string | null }) {
-  const usuario = exigirPermiso(actor, "pedidos:crear");
+  const usuario = await exigirPermiso(actor, "pedidos:crear");
 
   const candidatos = await pedidosRepo.listarListaCompra(datos.marcaId);
   if (!candidatos.length) {
@@ -54,7 +54,7 @@ export async function obtenerPedido(pedidoId: number) {
 }
 
 export async function eliminarPedido(actor: Usuario | null, pedidoId: number) {
-  const usuario = exigirPermiso(actor, "pedidos:eliminar");
+  const usuario = await exigirPermiso(actor, "pedidos:eliminar");
   const existe = await pedidosRepo.buscarPedidoPorId(pedidoId);
   if (!existe) throw new NotFoundError("Pedido no encontrado");
   await pedidosRepo.eliminarPedido(pedidoId);

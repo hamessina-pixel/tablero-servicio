@@ -14,6 +14,7 @@ interface UsuarioFila {
   activo: boolean; pendiente: boolean; creadoEn: string; ultimoAcceso: string | null;
 }
 interface RolInfo { rol: string; label: string; descripcion: string; permisos: string[]; }
+interface PermisoInfo { permiso: string; label: string; }
 
 export default function UsuariosPage() {
   const { usuario: yo, esAdmin } = useAuth();
@@ -28,10 +29,12 @@ function UsuariosAdmin({ yoId }: { yoId: number }) {
   const toast = useToast();
   const [usuarios, setUsuarios] = useState<UsuarioFila[]>([]);
   const [roles, setRoles] = useState<RolInfo[]>([]);
+  const [catalogoPermisos, setCatalogoPermisos] = useState<PermisoInfo[]>([]);
   const [modal, setModal] = useState<{ modo: "crear" } | { modo: "editar"; u: UsuarioFila; aprobar: boolean } | null>(null);
 
   function recargar() { api.auth.usuarios.listar().then(setUsuarios); }
-  useEffect(() => { recargar(); api.auth.roles().then(setRoles); }, []);
+  function recargarRoles() { api.auth.roles().then((d) => { setRoles(d.roles); setCatalogoPermisos(d.catalogoPermisos); }); }
+  useEffect(() => { recargar(); recargarRoles(); }, []);
 
   const pendientes = usuarios.filter((u) => u.pendiente);
 
@@ -108,12 +111,12 @@ function UsuariosAdmin({ yoId }: { yoId: number }) {
 
       <Card>
         <CardTitle>Niveles de acceso</CardTitle>
-        <div className="mt-2 flex flex-col gap-2 text-[13px]">
+        <p className="mb-2 mt-1 text-[12px] text-[var(--text-muted)]">
+          Qué puede hacer cada nivel — tocá los permisos y guardá para cambiarlo.
+        </p>
+        <div className="mt-2 flex flex-col gap-4">
           {roles.map((r) => (
-            <div key={r.rol} className="flex flex-col gap-0.5 border-b border-[var(--border)] py-2 last:border-0">
-              <span className="font-bold">{r.label}</span>
-              <span className="text-[12px] text-[var(--text-muted)]">{r.descripcion}</span>
-            </div>
+            <RolPermisosEditor key={r.rol} rol={r} catalogo={catalogoPermisos} onGuardado={recargarRoles} />
           ))}
         </div>
       </Card>
@@ -199,6 +202,63 @@ function UsuarioFormModal({
           <Button onClick={onCerrar}>Cancelar</Button>
           <Button variante="primary" onClick={guardar} disabled={guardando}>Guardar</Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function RolPermisosEditor({
+  rol, catalogo, onGuardado,
+}: {
+  rol: RolInfo;
+  catalogo: PermisoInfo[];
+  onGuardado: () => void;
+}) {
+  const toast = useToast();
+  const [seleccion, setSeleccion] = useState<Set<string>>(new Set(rol.permisos));
+  const [guardando, setGuardando] = useState(false);
+
+  useEffect(() => { setSeleccion(new Set(rol.permisos)); }, [rol.permisos]);
+
+  const cambio = seleccion.size !== rol.permisos.length || rol.permisos.some((p) => !seleccion.has(p));
+
+  function alternar(permiso: string) {
+    setSeleccion((prev) => {
+      const copia = new Set(prev);
+      if (copia.has(permiso)) copia.delete(permiso); else copia.add(permiso);
+      return copia;
+    });
+  }
+
+  async function guardar() {
+    setGuardando(true);
+    try {
+      await api.auth.actualizarPermisosDeRol(rol.rol, [...seleccion]);
+      toast(`Permisos de "${rol.label}" actualizados`, "success");
+      onGuardado();
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "No se pudo guardar", "error");
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div className="rounded-[var(--radius-md)] border border-[var(--border)] p-3.5">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <span className="font-bold">{rol.label}</span>
+        {cambio && (
+          <Button tamano="sm" variante="primary" onClick={guardar} disabled={guardando}>Guardar</Button>
+        )}
+      </div>
+      <p className="mb-2.5 text-[12px] text-[var(--text-muted)]">{rol.descripcion}</p>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+        {catalogo.map((p) => (
+          <label key={p.permiso} className="flex items-center gap-2 text-[13px]">
+            <input type="checkbox" checked={seleccion.has(p.permiso)} onChange={() => alternar(p.permiso)} />
+            {p.label}
+          </label>
+        ))}
       </div>
     </div>
   );

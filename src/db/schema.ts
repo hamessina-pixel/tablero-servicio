@@ -282,6 +282,19 @@ export const usuarios = pgTable("usuarios", {
   ultimoAcceso: text("ultimo_acceso"),
 });
 
+/** Qué permiso tiene cada rol — editable desde la pantalla de Usuarios, no
+ *  fijo en el código. Los NOMBRES de permiso siguen siendo los que cada
+ *  servicio chequea en el código (p.ej. "precios:editar"); lo que el admin
+ *  puede cambiar es a qué rol se los asigna. */
+export const permisosRol = pgTable("permisos_rol", {
+  id: serial("id").primaryKey(),
+  rol: text("rol").notNull(),
+  permiso: text("permiso").notNull(),
+}, (t) => ({
+  rolPermisoUnico: uniqueIndex("permisos_rol_unico").on(t.rol, t.permiso),
+  rolIdx: index("idx_permisos_rol_rol").on(t.rol),
+}));
+
 export const sesiones = pgTable("sesiones", {
   id: serial("id").primaryKey(),
   usuarioId: integer("usuario_id").notNull().references(() => usuarios.id),

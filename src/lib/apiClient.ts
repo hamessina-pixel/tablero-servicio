@@ -131,7 +131,14 @@ export const api = {
   },
   auth: {
     estado: () => get<{ hayUsuarios: boolean; primeraCuenta: boolean }>("/api/auth/estado"),
-    roles: () => get<{ rol: string; label: string; descripcion: string; permisos: string[] }[]>("/api/auth/roles"),
+    roles: () => get<{
+      roles: { rol: string; label: string; descripcion: string; permisos: string[] }[];
+      catalogoPermisos: { permiso: string; label: string }[];
+    }>("/api/auth/roles"),
+    actualizarPermisosDeRol: (rol: string, permisos: string[]) =>
+      patch<{ rol: string; label: string; descripcion: string; permisos: string[] }[]>(
+        "/api/auth/roles", { rol, permisos },
+      ),
     registro: (datos: { nombre: string; usuario: string; password: string }) =>
       post<{ primeraCuenta: boolean; pendiente: boolean; usuario: UsuarioPublico; mensaje: string }>(
         "/api/auth/registro", datos,

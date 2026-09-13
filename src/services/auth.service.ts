@@ -11,9 +11,8 @@ import * as usuariosRepo from "@/repositories/usuarios.repository";
 import * as sesionesRepo from "@/repositories/sesiones.repository";
 import { hashPassword, hashToken, verificarPassword, generarTokenSesion } from "@/lib/crypto";
 import { ahoraArgentinaISO, argentinaISOEnDias } from "@/lib/fecha";
-import {
-  labelDeRol, permisosDe, rolesPublicos, ROL_POR_DEFECTO, tienePermiso,
-} from "@/domain/roles";
+import { labelDeRol, ROL_POR_DEFECTO } from "@/domain/roles";
+import { permisosDe, rolesConPermisos, tienePermiso } from "@/services/permisos.service";
 import { ConflictError, ForbiddenError, UnauthorizedError, ValidationError } from "@/domain/errors";
 import type { Usuario } from "@/domain/types";
 
@@ -40,7 +39,7 @@ export interface UsuarioPublico {
 /** Versión del usuario segura para mandar al frontend (sin hash/salt). Manda
  *  también los permisos calculados: el frontend esconde botones con esta
  *  lista en vez de repetir la tabla de roles del backend. */
-export function usuarioPublico(row: Usuario): UsuarioPublico {
+export async function usuarioPublico(row: Usuario): Promise<UsuarioPublico> {
   return {
     id: row.id,
     nombre: row.nombre,
@@ -49,7 +48,7 @@ export function usuarioPublico(row: Usuario): UsuarioPublico {
     rolLabel: labelDeRol(row.rol),
     activo: row.activo,
     pendiente: row.pendiente,
-    permisos: [...permisosDe(row.rol)].sort(),
+    permisos: [...(await permisosDe(row.rol))].sort(),
   };
 }
 
@@ -59,7 +58,7 @@ export async function estado() {
 }
 
 export function roles() {
-  return rolesPublicos();
+  return rolesConPermisos();
 }
 
 async function abrirSesion(usuarioId: number): Promise<string> {
@@ -92,12 +91,12 @@ export async function registro(datos: { nombre: string; usuario: string; passwor
   if (primera) {
     const token = await abrirSesion(row.id);
     return {
-      primeraCuenta: true, pendiente: false, usuario: usuarioPublico(row),
+      primeraCuenta: true, pendiente: false, usuario: await usuarioPublico(row),
       mensaje: "Cuenta de administrador creada. Ya estás dentro.", token,
     };
   }
   return {
-    primeraCuenta: false, pendiente: true, usuario: usuarioPublico(row),
+    primeraCuenta: false, pendiente: true, usuario: await usuarioPublico(row),
     mensaje: "Cuenta creada. Un administrador tiene que habilitarla antes de que puedas entrar.",
     token: null as string | null,
   };
@@ -115,7 +114,7 @@ export async function login(usuarioCrudo: string, password: string) {
     throw new ForbiddenError("Tu cuenta está desactivada. Pedile a un administrador que la reactive");
   }
   const token = await abrirSesion(row.id);
-  return { usuario: usuarioPublico(row), token };
+  return { usuario: await usuarioPublico(row), token };
 }
 
 export async function logout(tokenCrudo: string | undefined): Promise<void> {
@@ -136,6 +135,7 @@ export async function me(tokenCrudo: string | undefined): Promise<UsuarioPublico
   return usuarioPublico(usuario);
 }
 
+
 // ---------------------------------------------------------------------------
 // Guardas de permiso, para que las use CUALQUIER servicio (repuestos, pedidos,
 // usuarios...) — así el control de acceso vive en una sola parte y no se
@@ -149,14 +149,14 @@ export function requireUsuario(usuario: Usuario | null): Usuario {
 
 /** Devuelve 401 si no hay sesión y 403 si la hay pero el nivel no alcanza —
  *  el frontend necesita distinguir "entrá" de "no podés". */
-export function exigirPermiso(usuario: Usuario | null, permiso: string): Usuario {
+export async function exigirPermiso(usuario: Usuario | null, permiso: string): Promise<Usuario> {
   const u = requireUsuario(usuario);
-  if (!tienePermiso(u, permiso)) {
+  if (!(await tienePermiso(u, permiso))) {
     throw new ForbiddenError(`Tu nivel de acceso (${labelDeRol(u.rol)}) no permite hacer esto`);
   }
   return u;
 }
 
-export function requireAdmin(usuario: Usuario | null): Usuario {
+export async function requireAdmin(usuario: Usuario | null): Promise<Usuario> {
   return exigirPermiso(usuario, "usuarios:gestionar");
 }

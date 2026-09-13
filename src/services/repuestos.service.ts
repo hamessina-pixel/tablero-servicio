@@ -116,15 +116,15 @@ export async function actualizarRepuesto(
   // se exige el permiso de lo que realmente vino con valor.
   const usuario = requireUsuario(actor);
   if (cambios.precioCosto != null || cambios.precioPublico != null) {
-    exigirPermiso(usuario, "precios:editar");
+    await exigirPermiso(usuario, "precios:editar");
   }
   if (cambios.stockActual != null || cambios.stockMinimo != null || cambios.esStockGestionado != null) {
-    exigirPermiso(usuario, "stock:editar");
+    await exigirPermiso(usuario, "stock:editar");
   }
   // Código y nombre son la identidad del repuesto en el catálogo: mismo
   // permiso que dar de alta o de baja un repuesto, no el de precios/stock.
   if (cambios.codigo !== undefined || cambios.nombre !== undefined) {
-    exigirPermiso(usuario, "repuestos:crear");
+    await exigirPermiso(usuario, "repuestos:crear");
   }
 
   const existente = await repuestosRepo.buscarRepuestoPorId(repuestoId);
@@ -161,7 +161,7 @@ export async function crearRepuesto(
     stockMinimo: number | null;
   },
 ) {
-  const usuario = exigirPermiso(actor, "repuestos:crear");
+  const usuario = await exigirPermiso(actor, "repuestos:crear");
 
   const marca = await marcasRepo.buscarMarcaPorId(datos.marcaId);
   if (!marca) throw new ValidationError("marca_id inválido");
@@ -178,7 +178,7 @@ export async function crearRepuesto(
 }
 
 export async function eliminarRepuesto(actor: Usuario | null, repuestoId: number) {
-  const usuario = exigirPermiso(actor, "repuestos:eliminar");
+  const usuario = await exigirPermiso(actor, "repuestos:eliminar");
   const existente = await repuestosRepo.buscarRepuestoPorId(repuestoId);
   if (!existente) throw new NotFoundError("Repuesto no encontrado");
   await repuestosRepo.eliminarRepuesto(repuestoId);

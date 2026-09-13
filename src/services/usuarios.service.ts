@@ -10,24 +10,25 @@ import { hashPassword, hashToken } from "@/lib/crypto";
 import { ahoraArgentinaISO } from "@/lib/fecha";
 import { rolValido } from "@/domain/roles";
 import { requireAdmin, usuarioPublico, validarPassword } from "@/services/auth.service";
+import * as permisosService from "@/services/permisos.service";
 import { ConflictError, NotFoundError, ValidationError } from "@/domain/errors";
 import type { Usuario } from "@/domain/types";
 
 export async function listarUsuarios(actor: Usuario | null) {
-  requireAdmin(actor);
+  await requireAdmin(actor);
   const rows = await usuariosRepo.listar();
-  return rows.map((r) => ({
-    ...usuarioPublico(r),
+  return Promise.all(rows.map(async (r) => ({
+    ...(await usuarioPublico(r)),
     creadoEn: r.creadoEn,
     ultimoAcceso: r.ultimoAcceso,
-  }));
+  })));
 }
 
 export async function crearUsuario(
   actor: Usuario | null,
   datos: { nombre: string; usuario: string; password: string; rol: string },
 ) {
-  requireAdmin(actor);
+  await requireAdmin(actor);
   if (!rolValido(datos.rol)) throw new ValidationError("Nivel de acceso inválido");
   validarPassword(datos.password);
 
@@ -54,7 +55,7 @@ export async function actualizarUsuario(
   cambios: { nombre?: string; rol?: string; activo?: boolean; password?: string },
   tokenCrudoDelActor?: string,
 ) {
-  const admin = requireAdmin(actor);
+  const admin = await requireAdmin(actor);
   const existente = await usuariosRepo.buscarPorId(usuarioId);
   if (!existente) throw new NotFoundError("Usuario no encontrado");
 
@@ -113,7 +114,7 @@ export async function actualizarUsuario(
 }
 
 export async function eliminarUsuario(actor: Usuario | null, usuarioId: number) {
-  const admin = requireAdmin(actor);
+  const admin = await requireAdmin(actor);
   if (usuarioId === admin.id) throw new ValidationError("No podés eliminar tu propia cuenta");
 
   const existente = await usuariosRepo.buscarPorId(usuarioId);
@@ -129,4 +130,10 @@ export async function eliminarUsuario(actor: Usuario | null, usuarioId: number) 
   await auditoriaRepo.anonimizarUsuario(usuarioId);
   await sesionesRepo.invalidarTodasDe(usuarioId);
   await usuariosRepo.eliminar(usuarioId);
+}
+
+export async function actualizarPermisosDeRol(actor: Usuario | null, rol: string, permisos: string[]) {
+  await requireAdmin(actor);
+  await permisosService.actualizarPermisosDeRol(rol, permisos);
+  return permisosService.rolesConPermisos();
 }
