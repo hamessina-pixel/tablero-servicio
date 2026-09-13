@@ -6,7 +6,7 @@ import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Donut } from "@/components/ui/Donut";
-import { money, horasATiempo } from "@/lib/format";
+import { money, horasDecimal } from "@/lib/format";
 import type { ItemDePlanConStock, PlanConDetalle, StockDeCodigo } from "@/domain/types";
 
 const FIAT_BASICO_KEYWORDS = ["filtro de aceite", "filtro de aire", "filtro de combustible", "filtro de climatiz"];
@@ -215,7 +215,7 @@ export function PlanDetalle({
                 <>
                   <LineaResumen label={<Tip label="Repuestos del pack c/IVA" texto="Costo de reposición con IVA (21%)" />} valor={money(packRepuestos)} />
                   <LineaResumen
-                    label={<Tip label={`Mano de obra del pack (${horasATiempo(packManoObra / 250000)})`}
+                    label={<Tip label={`Mano de obra del pack (${horasDecimal(packManoObra / 250000)})`}
                                 texto={`Diferencia entre el precio fijo del pack y el costo de sus repuestos, a ${money(250000)} la hora`} />}
                     valor={money(packManoObra)}
                   />
@@ -230,7 +230,7 @@ export function PlanDetalle({
                 <LineaResumen label={<Tip label="Fluidos adicionales c/IVA" texto="Costo de reposición con IVA (21%)" />} valor={money(extraFluidos)} />
               )}
               {tieneExtras && (
-                <LineaResumen label={`Mano de obra adicional (${horasATiempo(plan.manoObraHoras)})`} valor={money(manoObraExtra)} />
+                <LineaResumen label={`Mano de obra adicional (${horasDecimal(plan.manoObraHoras)})`} valor={money(manoObraExtra)} />
               )}
             </div>
           </Card>
@@ -271,7 +271,7 @@ export function PlanDetalle({
             segmentos={[
               { label: "Repuestos", value: crep, color: "var(--cz-slice-rep)" },
               { label: "Fluidos", value: cflu, color: "var(--cz-slice-flu)" },
-              { label: "Mano de obra", value: cmo, color: "var(--cz-slice-mo)", etiqueta: `Mano de obra (${horasATiempo(plan.manoObraHoras)})` },
+              { label: "Mano de obra", value: cmo, color: "var(--cz-slice-mo)", etiqueta: `Mano de obra (${horasDecimal(plan.manoObraHoras)})` },
             ]}
           />
         </div>

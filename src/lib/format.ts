@@ -30,3 +30,11 @@ export function horasATiempo(horasDecimal: number | null | undefined): string {
   if (min === 0) return `${h}h`;
   return `${h}h ${min}min`;
 }
+
+/** Mano de obra en décimos de hora, como se factura en el taller: 0,1 = 6 min,
+ *  0,2 = 12 min... 1,0 = 1 hora. Muestra el número decimal tal cual (no
+ *  convertido a "Xh Ymin"), con coma como en el resto de la app. */
+export function horasDecimal(horasDecimal: number | null | undefined): string {
+  const n = Number(horasDecimal) || 0;
+  return `${n.toFixed(1).replace(".", ",")} hs`;
+}
