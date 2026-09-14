@@ -209,6 +209,18 @@ export function PlanDetalle({
     const noPrice = !plan.precioSugerido && precioPublicado == null;
     const mostrarResumen = tienePackDesglosado || plan.costoTotal != null || extraRepuestos > 0 || extraFluidos > 0 || tieneExtras;
 
+    // Mismo desglose que en los planes normales, para poder comparar en qué se
+    // va la plata entre marcas. Junta lo del pack con lo que se cobra aparte:
+    // al cliente le llega un solo precio, no dos listas.
+    const composicion = [
+      { label: "Repuestos", value: packRepuestos + extraRepuestos, color: "var(--cz-slice-rep)" },
+      { label: "Fluidos", value: extraFluidos, color: "var(--cz-slice-flu)" },
+      {
+        label: "Mano de obra", value: packManoObra + manoObraItems, color: "var(--cz-slice-mo)",
+        etiqueta: `Mano de obra (${horasDecimal((packManoObra / plan.valorHora) + horasDeItems)})`,
+      },
+    ];
+
     let notas: string[] = [];
     try { notas = JSON.parse(plan.notas || "[]"); } catch {}
     const confirmar = notas.filter((n) => n.startsWith("Precio a confirmar:"));
@@ -266,6 +278,18 @@ export function PlanDetalle({
         )}
 
         <BloqueLubricacion lub={lub} />
+
+        {tienePackDesglosado && (
+          <Card>
+            <CardTitle>Composición del costo</CardTitle>
+            <p className="text-[12px] text-[var(--text-muted)]">
+              El pack se cobra cerrado; este reparto es el que informa {marcaNombre} de qué se compone
+            </p>
+            <div className="mt-3">
+              <Donut formatMoneda={money} segmentos={composicion} />
+            </div>
+          </Card>
+        )}
 
         {mostrarResumen && (
           <Card>
