@@ -259,11 +259,11 @@ function ValorHoraCard() {
             className="mt-1"
             value={empresa}
             disabled={!puedeEmpresa}
-            placeholder="Ej.: Rodas Automotores"
+            placeholder="Ej.: SEPRIO"
             onChange={(e) => setEmpresa(e.target.value)}
           />
           <span className="mt-1 block text-[11px] font-normal text-[var(--text-muted)]">
-            Encabeza la pantalla de Inicio.
+            Solo el nombre: encabeza Inicio en grande, con “Panel de Servicio” debajo.
           </span>
         </label>
         <label className="block text-[12px] font-semibold text-[var(--text-secondary)]">

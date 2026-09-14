@@ -35,6 +35,9 @@ export default function InicioPage() {
   const [planes, setPlanes] = useState<ResumenPorModelo[]>([]);
   const [sinAcceso, setSinAcceso] = useState(false);
   const [ahora, setAhora] = useState<Date | null>(null);
+  // El nombre del taller se pide aparte del resumen: es lo que va en la
+  // fachada, no un dato reservado, y tiene que verse también antes de entrar.
+  const [empresa, setEmpresa] = useState("Panel de Servicio");
 
   // Se vuelve a pedir al entrar o salir: el resumen del negocio pide sesión, y
   // si no se reintenta, alguien que se loguea desde acá se queda mirando el
@@ -43,6 +46,7 @@ export default function InicioPage() {
     setSinAcceso(false);
     api.dashboard.resumen().then(setR).catch(() => { setR(null); setSinAcceso(true); });
     api.planes.resumen().then(setPlanes);
+    api.configuracion.obtener().then((c) => setEmpresa(c.empresa)).catch(() => {});
     // La fecha se arma en el navegador: si se calcula al renderizar en el
     // servidor, la hora del hosting no es la del taller.
     setAhora(new Date());
@@ -63,7 +67,7 @@ export default function InicioPage() {
   if (sinAcceso) {
     return (
       <div className="flex flex-col gap-5">
-        <Portada empresa="Panel de Servicio" ahora={ahora} nombre={null} />
+        <Portada empresa={empresa} ahora={ahora} nombre={null} />
         <Card>
           <CardTitle>Accesos rápidos</CardTitle>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -102,7 +106,7 @@ export default function InicioPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <Portada empresa={r.empresa} ahora={ahora} nombre={usuario?.nombre ?? null} />
+      <Portada empresa={r.empresa || empresa} ahora={ahora} nombre={usuario?.nombre ?? null} />
 
       {/* Lo que requiere una decisión hoy va antes que cualquier número. */}
       {pendientes.length > 0 && (
@@ -224,15 +228,20 @@ export default function InicioPage() {
 function Portada({ empresa, ahora, nombre }: { empresa: string; ahora: Date | null; nombre: string | null }) {
   return (
     <div
-      className="rounded-[var(--radius-lg)] px-5 py-5"
+      className="rounded-[var(--radius-lg)] px-5 py-6"
       style={{
-        background: "linear-gradient(135deg, var(--brand-soft), transparent 70%)",
-        borderLeft: "3px solid var(--brand)",
+        background: "linear-gradient(160deg, var(--brand-soft), transparent 75%)",
+        borderTop: "3px solid var(--brand)",
       }}
     >
-      <h1 className="text-[26px] font-extrabold leading-tight tracking-tight">{empresa}</h1>
-      <p className="mt-1 text-[13px] text-[var(--text-secondary)]">
-        {nombre ? `${saludo(ahora ?? new Date())}, ${nombre.split(" ")[0]}.` : "Panel de servicio y repuestos."}
+      <h1 className="text-center text-[34px] font-extrabold uppercase leading-tight tracking-tight sm:text-[40px]">
+        {empresa}
+      </h1>
+      <p className="mt-0.5 text-center text-[13px] font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+        Panel de Servicio
+      </p>
+      <p className="mt-2.5 text-center text-[13px] text-[var(--text-secondary)]">
+        {nombre ? `${saludo(ahora ?? new Date())}, ${nombre.split(" ")[0]}.` : "Servicio y repuestos."}
         {ahora && <span className="text-[var(--text-muted)]"> {fechaLarga(ahora)}</span>}
       </p>
     </div>
