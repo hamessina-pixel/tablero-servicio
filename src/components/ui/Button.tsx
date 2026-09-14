@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 
-type Variante = "primary" | "default" | "danger" | "ghost";
+type Variante = "primary" | "default" | "danger" | "ghost" | "success";
 type Tamano = "sm" | "md";
 
 const BASE = "inline-flex items-center justify-center gap-1.5 rounded-[var(--radius-sm)] font-semibold " +
@@ -14,6 +14,8 @@ const VARIANTES: Record<Variante, string> = {
     "hover:shadow-[var(--shadow-hover)] hover:-translate-y-px",
   danger: "bg-[var(--surface)] text-[var(--status-critical)] border border-[var(--border-strong)] " +
     "hover:border-[var(--status-critical)]",
+  success: "text-white bg-[var(--status-good)] shadow-[var(--shadow-sm)] " +
+    "hover:shadow-[var(--shadow-hover)] hover:-translate-y-px",
   ghost: "bg-transparent text-[var(--text-secondary)] hover:bg-[var(--surface-2)]",
 };
 

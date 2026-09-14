@@ -113,7 +113,7 @@ function RepuestosPageInner() {
             <input type="checkbox" checked={stockBajo} onChange={(e) => setStockBajo(e.target.checked)} />
             Stock bajo
           </label>
-          <Button className="ml-auto" onClick={abrirImportarPrecios}>Importar precios</Button>
+          <Button variante="success" className="ml-auto" onClick={abrirImportarPrecios}>Importar precios</Button>
           <Button variante="primary" onClick={abrirCrear}>+ Agregar a stock</Button>
         </div>
       </Card>
