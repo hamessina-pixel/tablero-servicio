@@ -8,6 +8,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { BarChart } from "@/components/ui/BarChart";
+import { DotChart } from "@/components/ui/DotChart";
 import { Button } from "@/components/ui/Button";
 import { money, compactNumber, number } from "@/lib/format";
 import type { ResumenDashboard, ResumenPorModelo } from "@/domain/types";
@@ -214,9 +215,9 @@ export default function InicioPage() {
           </div>
           <Button tamano="sm" onClick={() => router.push("/cotizador?tab=comparador")}>Comparar</Button>
         </div>
-        <BarChart
+        <DotChart
           rows={costoKmPorMarca.map((x) => ({
-            label: x.marca, value: x.promedio, color: colorMarca(x.marca), valueLabel: money(x.promedio),
+            label: x.marca, value: x.promedio, valueLabel: money(x.promedio),
           }))}
         />
       </Card>
