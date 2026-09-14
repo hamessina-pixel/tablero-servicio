@@ -6,7 +6,8 @@ import { api } from "@/lib/apiClient";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Input, Select } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Input";
+import { InputBusqueda } from "@/components/ui/InputBusqueda";
 import type { Sustitucion } from "@/domain/types";
 
 const CLASES: Record<string, string> = { S: "Sustitución", A: "Alternativa" };
@@ -51,7 +52,13 @@ function SustitucionesPageInner() {
 
       <Card>
         <div className="flex flex-wrap gap-2">
-          <Input placeholder="Buscar código anterior o nuevo…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
+          <InputBusqueda
+            placeholder="Buscar código anterior o nuevo…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onLimpiar={() => setQ("")}
+            className="w-full max-w-xs"
+          />
           <Select value={marcaId ?? ""} onChange={(e) => setMarcaId(Number(e.target.value) || undefined)} className="max-w-[220px]">
             <option value="">Todas las marcas</option>
             {porMarca.map((m) => <option key={m.marcaId ?? "sin"} value={m.marcaId ?? ""}>{m.nombre} ({m.total})</option>)}

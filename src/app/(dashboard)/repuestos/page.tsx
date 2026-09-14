@@ -9,7 +9,8 @@ import { useToast } from "@/components/Toast";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Input, Select } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Input";
+import { InputBusqueda } from "@/components/ui/InputBusqueda";
 import { money } from "@/lib/format";
 import { RepuestoModal, CrearRepuestoModal } from "@/components/repuestos/RepuestoModal";
 import { ImportarPreciosModal } from "@/components/repuestos/ImportarPreciosModal";
@@ -92,7 +93,13 @@ function RepuestosPageInner() {
 
       <Card>
         <div className="flex flex-wrap items-center gap-2">
-          <Input placeholder="Buscar por código o nombre…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
+          <InputBusqueda
+            placeholder="Buscar por código o nombre…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onLimpiar={() => setQ("")}
+            className="w-full max-w-xs"
+          />
           <Select value={marcaId ?? ""} onChange={(e) => setMarcaId(Number(e.target.value) || undefined)} className="max-w-[160px]">
             <option value="">Todas las marcas</option>
             {marcas.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}

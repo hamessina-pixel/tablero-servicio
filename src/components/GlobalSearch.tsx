@@ -125,6 +125,18 @@ export function GlobalSearch() {
             placeholder="Buscar un repuesto, código o página…"
             className="flex-1 border-0 bg-transparent text-[14.5px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
           />
+          {q && (
+            <button
+              type="button"
+              onClick={() => { setQ(""); inputRef.current?.focus(); }}
+              aria-label="Borrar la búsqueda"
+              title="Borrar"
+              className="flex h-6 w-6 items-center justify-center rounded-full text-[15px] leading-none
+                         text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
+            >
+              &times;
+            </button>
+          )}
           <kbd className="rounded-[6px] border border-[var(--border-strong)] px-1.5 py-0.5 text-[11px] text-[var(--text-muted)]">Esc</kbd>
         </div>
         <div className="max-h-[52vh] overflow-y-auto p-2">

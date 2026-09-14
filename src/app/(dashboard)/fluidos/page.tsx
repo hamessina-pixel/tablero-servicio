@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/apiClient";
 import { Card } from "@/components/ui/Card";
-import { Input, Select } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Input";
+import { InputBusqueda } from "@/components/ui/InputBusqueda";
 import { money } from "@/lib/format";
 import type { Fluido } from "@/domain/types";
 
@@ -29,7 +30,13 @@ export default function FluidosPage() {
 
       <Card>
         <div className="flex flex-wrap gap-2">
-          <Input placeholder="Buscar por código o descripción…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
+          <InputBusqueda
+            placeholder="Buscar por código o descripción…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onLimpiar={() => setQ("")}
+            className="w-full max-w-xs"
+          />
           <Select value={categoria} onChange={(e) => setCategoria(e.target.value)} className="max-w-[220px]">
             <option value="">Todas las categorías</option>
             {categorias.map((c) => <option key={c} value={c}>{c}</option>)}

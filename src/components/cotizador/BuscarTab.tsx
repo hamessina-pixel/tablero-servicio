@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/apiClient";
-import { Input } from "@/components/ui/Input";
+import { InputBusqueda } from "@/components/ui/InputBusqueda";
 
 interface GrupoBusqueda {
   codigo: string | null;
@@ -32,11 +32,12 @@ export function BuscarTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Input
+      <InputBusqueda
         placeholder="Buscar por código o nombre de repuesto…"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        className="max-w-md"
+        onLimpiar={() => setQ("")}
+        className="w-full max-w-md"
       />
       {resultado && (
         <>

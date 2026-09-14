@@ -9,7 +9,8 @@ import { useToast } from "@/components/Toast";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Input, Select } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Input";
+import { InputBusqueda } from "@/components/ui/InputBusqueda";
 import { money } from "@/lib/format";
 
 interface StockBajoItem {
@@ -180,11 +181,12 @@ function PedidosPageInner() {
         <CardTitle>Stock bajo</CardTitle>
         <p className="mb-3 text-[12px] text-[var(--text-muted)]">Repuestos por debajo del mínimo. Agregalos a la lista de compra para incluirlos en el próximo pedido.</p>
         <div className="mb-3 flex items-center gap-2">
-          <Input
+          <InputBusqueda
             value={qStockBajo}
             onChange={(e) => setQStockBajo(e.target.value)}
+            onLimpiar={() => setQStockBajo("")}
             placeholder="Buscar por código o nombre…"
-            className="max-w-xs"
+            className="w-full max-w-xs"
           />
           {qStockBajo.trim() && (
             <span className="text-[12px] text-[var(--text-muted)]">{stockBajoFiltrado.length} de {stockBajo.length}</span>

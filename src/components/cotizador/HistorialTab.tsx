@@ -6,6 +6,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/components/Toast";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { InputBusqueda } from "@/components/ui/InputBusqueda";
 import { money } from "@/lib/format";
 import { HISTORIAL_KEY, type SeleccionCotizador } from "@/components/cotizador/CotizadorTab";
 
@@ -97,11 +98,12 @@ export function HistorialTab({ onCargar }: { onCargar: (s: SeleccionCotizador) =
         <p className="mb-3 text-[12px] text-[var(--text-muted)]">
           Busca en todas las cotizaciones guardadas por cualquier usuario, no solo en este navegador.
         </p>
-        <Input
+        <InputBusqueda
           value={q}
           onChange={(e) => setQ(e.target.value)}
+          onLimpiar={() => setQ("")}
           placeholder="Patente (AB123CD) o nombre de cliente…"
-          className="max-w-sm"
+          className="w-full max-w-sm"
         />
         <div className="mt-3 flex flex-col gap-2">
           {buscando && <p className="text-[13px] text-[var(--text-muted)]">Buscando…</p>}
