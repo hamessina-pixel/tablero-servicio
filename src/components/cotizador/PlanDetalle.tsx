@@ -212,9 +212,22 @@ export function PlanDetalle({
     // Mismo desglose que en los planes normales, para poder comparar en qué se
     // va la plata entre marcas. Junta lo del pack con lo que se cobra aparte:
     // al cliente le llega un solo precio, no dos listas.
+    //
+    // Ojo con el pack: la terminal informa un solo número de "repuestos" que
+    // en realidad trae también el aceite (en un CRONOS son $70.352 de filtros
+    // y $42.377 de aceite). Se reparte según lo que pesa cada ítem del pack,
+    // así el aceite figura como fluido y el total sigue dando igual.
+    const sumaBasicos = (filas: ItemDePlanConStock[], basico: (f: ItemDePlanConStock) => boolean) =>
+      filas.filter(basico).reduce((a, f) => a + (f.total ?? 0), 0);
+    const basicoRep = sumaBasicos(plan.repuestos, (r) => esRepuestoBasicoFiat(r.nombre));
+    const basicoFlu = sumaBasicos(plan.fluidos, (f) => !esFluidoExtraFiat(f.nombre, f.producto));
+    const baseDelPack = basicoRep + basicoFlu;
+    const packFluidos = baseDelPack > 0 ? packRepuestos * (basicoFlu / baseDelPack) : 0;
+    const packSoloRepuestos = packRepuestos - packFluidos;
+
     const composicion = [
-      { label: "Repuestos", value: packRepuestos + extraRepuestos, color: "var(--cz-slice-rep)" },
-      { label: "Fluidos", value: extraFluidos, color: "var(--cz-slice-flu)" },
+      { label: "Repuestos", value: packSoloRepuestos + extraRepuestos, color: "var(--cz-slice-rep)" },
+      { label: "Fluidos", value: packFluidos + extraFluidos, color: "var(--cz-slice-flu)" },
       {
         label: "Mano de obra", value: packManoObra + manoObraItems, color: "var(--cz-slice-mo)",
         etiqueta: `Mano de obra (${horasDecimal((packManoObra / plan.valorHora) + horasDeItems)})`,
