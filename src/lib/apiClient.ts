@@ -72,6 +72,8 @@ export const api = {
       patch<PlanMantenimiento>(`/api/planes/${id}/mano-obra-verificada`, { horas }),
     actualizarManoObraDeItem: (itemId: number, horas: number | null) =>
       patch(`/api/planes/items/${itemId}/mano-obra`, { horas }),
+    actualizarDesglose: (id: number, desglose: { repuestos: number | null; fluidos: number | null }) =>
+      patch(`/api/planes/${id}/desglose`, desglose),
   },
   configuracion: {
     obtener: () => get<{ valorHora: number; empresa: string }>("/api/configuracion"),

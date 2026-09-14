@@ -50,6 +50,13 @@
       "when": 1789347157559,
       "tag": "0006_milky_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789428976297,
+      "tag": "0007_hard_electro",
+      "breakpoints": true
     }
   ]
 }

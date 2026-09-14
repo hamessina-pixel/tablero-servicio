@@ -111,6 +111,12 @@ export const planesMantenimiento = pgTable("planes_mantenimiento", {
   // no recalcula costoTotal/precioSugerido, para no alterar cotizaciones ya
   // cargadas sin que alguien lo decida explícitamente.
   manoObraHorasVerificada: doublePrecision("mano_obra_horas_verificada"),
+  // Desglose cargado a mano, para las marcas que publican el service con un
+  // precio único y no dicen cómo se reparte (Peugeot, Citroën). Solo se
+  // guardan repuestos y fluidos: la mano de obra sale por diferencia contra el
+  // precio publicado, así el total siempre cierra.
+  desgloseRepuestos: doublePrecision("desglose_repuestos"),
+  desgloseFluidos: doublePrecision("desglose_fluidos"),
 }, (t) => ({
   modeloKmUnico: uniqueIndex("planes_modelo_km_unico").on(t.modeloId, t.kmIntervalo),
   modeloIdx: index("idx_planes_modelo").on(t.modeloId),

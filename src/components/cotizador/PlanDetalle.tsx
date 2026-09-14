@@ -225,14 +225,35 @@ export function PlanDetalle({
     const packFluidos = baseDelPack > 0 ? packRepuestos * (basicoFlu / baseDelPack) : 0;
     const packSoloRepuestos = packRepuestos - packFluidos;
 
-    const composicion = [
-      { label: "Repuestos", value: packSoloRepuestos + extraRepuestos, color: "var(--cz-slice-rep)" },
-      { label: "Fluidos", value: packFluidos + extraFluidos, color: "var(--cz-slice-flu)" },
-      {
-        label: "Mano de obra", value: packManoObra + manoObraItems, color: "var(--cz-slice-mo)",
-        etiqueta: `Mano de obra (${horasDecimal((packManoObra / plan.valorHora) + horasDeItems)})`,
-      },
-    ];
+    // Cuando la terminal no publica el desglose (Peugeot, Citroën) se usa el
+    // que se haya cargado a mano: se guardan repuestos y fluidos, y la mano de
+    // obra es lo que sobra del precio publicado.
+    const hayDesgloseManual = plan.desgloseRepuestos != null || plan.desgloseFluidos != null;
+    const precioCerrado = adj(plan.costoTotal ?? plan.precioSugerido ?? 0);
+    const manualRep = adj(plan.desgloseRepuestos ?? 0);
+    const manualFlu = adj(plan.desgloseFluidos ?? 0);
+
+    const composicion = tienePackDesglosado
+      ? [
+        { label: "Repuestos", value: packSoloRepuestos + extraRepuestos, color: "var(--cz-slice-rep)" },
+        { label: "Fluidos", value: packFluidos + extraFluidos, color: "var(--cz-slice-flu)" },
+        {
+          label: "Mano de obra", value: packManoObra + manoObraItems, color: "var(--cz-slice-mo)",
+          etiqueta: `Mano de obra (${horasDecimal((packManoObra / plan.valorHora) + horasDeItems)})`,
+        },
+      ]
+      : [
+        { label: "Repuestos", value: manualRep + extraRepuestos, color: "var(--cz-slice-rep)" },
+        { label: "Fluidos", value: manualFlu + extraFluidos, color: "var(--cz-slice-flu)" },
+        {
+          label: "Mano de obra",
+          value: Math.max(precioCerrado - manualRep - manualFlu, 0) + manoObraItems,
+          color: "var(--cz-slice-mo)",
+          etiqueta: `Mano de obra (${horasDecimal(
+            (Math.max(precioCerrado - manualRep - manualFlu, 0) / plan.valorHora) + horasDeItems,
+          )})`,
+        },
+      ];
 
     let notas: string[] = [];
     try { notas = JSON.parse(plan.notas || "[]"); } catch {}
@@ -292,17 +313,35 @@ export function PlanDetalle({
 
         <BloqueLubricacion lub={lub} />
 
-        {tienePackDesglosado && (
-          <Card>
-            <CardTitle>Composición del costo</CardTitle>
-            <p className="text-[12px] text-[var(--text-muted)]">
-              El pack se cobra cerrado; este reparto es el que informa {marcaNombre} de qué se compone
+        <Card>
+          <CardTitle>Composición del costo</CardTitle>
+          {tienePackDesglosado || hayDesgloseManual ? (
+            <>
+              <p className="text-[12px] text-[var(--text-muted)]">
+                {tienePackDesglosado
+                  ? `El pack se cobra cerrado; este reparto es el que informa ${marcaNombre} de qué se compone`
+                  : `${marcaNombre} publica un precio único: este reparto es el que cargaron acá, y la mano de obra es lo que queda`}
+              </p>
+              <div className="mt-3">
+                <Donut formatMoneda={money} segmentos={composicion} />
+              </div>
+            </>
+          ) : (
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
+              {marcaNombre} publica este service con un precio único y no informa cuánto corresponde a
+              repuestos, fluidos y mano de obra
+              {plan.repuestos.some((r) => !r.codigo) && ", ni el número de pieza de lo que cambia"}.
             </p>
-            <div className="mt-3">
-              <Donut formatMoneda={money} segmentos={composicion} />
-            </div>
-          </Card>
-        )}
+          )}
+          {!tienePackDesglosado && (
+            <DesgloseManual
+              plan={plan}
+              precioCerrado={precioCerrado}
+              puedeEditar={!usuario || puede("servicios:editar")}
+              onGuardado={onPlanActualizado}
+            />
+          )}
+        </Card>
 
         {mostrarResumen && (
           <Card>
@@ -577,6 +616,104 @@ function TablaItems({
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/** Carga a mano de qué se compone un service que la terminal publica con un
+ *  precio único. Se cargan repuestos y fluidos; la mano de obra es el resto,
+ *  así el total nunca se despega del precio publicado. */
+function DesgloseManual({
+  plan, precioCerrado, puedeEditar, onGuardado,
+}: {
+  plan: PlanConDetalle;
+  precioCerrado: number;
+  puedeEditar: boolean;
+  onGuardado?: () => void;
+}) {
+  const toast = useToast();
+  const { requirePermiso } = useAuth();
+  const [abierto, setAbierto] = useState(false);
+  const [rep, setRep] = useState(plan.desgloseRepuestos?.toString() ?? "");
+  const [flu, setFlu] = useState(plan.desgloseFluidos?.toString() ?? "");
+  const [guardando, setGuardando] = useState(false);
+
+  const num = (s: string) => Number(s.replace(",", ".")) || 0;
+  const restante = precioCerrado - num(rep) - num(flu);
+
+  async function guardar(limpiar = false) {
+    if (!(await requirePermiso("servicios:editar"))) return;
+    setGuardando(true);
+    try {
+      await api.planes.actualizarDesglose(plan.id, {
+        repuestos: limpiar ? null : num(rep),
+        fluidos: limpiar ? null : num(flu),
+      });
+      toast(limpiar ? "Desglose borrado" : "Desglose guardado", "success");
+      setAbierto(false);
+      onGuardado?.();
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "No se pudo guardar", "error");
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  if (!puedeEditar) return null;
+
+  if (!abierto) {
+    return (
+      <button
+        onClick={() => setAbierto(true)}
+        className="no-print mt-3 text-[12px] font-semibold text-[var(--brand)] hover:underline"
+      >
+        {plan.desgloseRepuestos != null || plan.desgloseFluidos != null
+          ? "Editar el desglose cargado"
+          : "Cargar el desglose de este service"}
+      </button>
+    );
+  }
+
+  return (
+    <div className="no-print mt-3 border-t border-[var(--border)] pt-3">
+      <p className="mb-2 text-[12px] text-[var(--text-muted)]">
+        Poné cuánto de los {money(precioCerrado)} corresponde a repuestos y a fluidos. La mano de obra es lo que sobra.
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-[11.5px] font-semibold text-[var(--text-secondary)]">
+          Repuestos
+          <Input type="number" className="mt-1 !w-32" value={rep} onChange={(e) => setRep(e.target.value)} />
+        </label>
+        <label className="text-[11.5px] font-semibold text-[var(--text-secondary)]">
+          Fluidos
+          <Input type="number" className="mt-1 !w-32" value={flu} onChange={(e) => setFlu(e.target.value)} />
+        </label>
+        <div className="text-[12px]">
+          <span className="text-[var(--text-muted)]">Mano de obra: </span>
+          <span className={`font-semibold ${restante < 0 ? "text-[var(--status-critical)]" : ""}`}>
+            {money(restante)}
+          </span>
+          {restante >= 0 && (
+            <span className="text-[var(--text-muted)]"> · {horasDecimal(restante / plan.valorHora)}</span>
+          )}
+        </div>
+      </div>
+      {restante < 0 && (
+        <p className="mt-1.5 text-[11.5px] text-[var(--status-critical)]">
+          Se pasa del precio del service: bajá alguno de los dos.
+        </p>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button tamano="sm" variante="primary" onClick={() => guardar()} disabled={guardando || restante < 0}>
+          Guardar
+        </Button>
+        <Button tamano="sm" onClick={() => setAbierto(false)}>Cancelar</Button>
+        {(plan.desgloseRepuestos != null || plan.desgloseFluidos != null) && (
+          <Button tamano="sm" variante="danger" onClick={() => guardar(true)} disabled={guardando}>
+            Borrar desglose
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

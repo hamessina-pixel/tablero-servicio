@@ -168,6 +168,42 @@ export async function actualizarManoObraDeItem(
 }
 
 /**
+ * Desglose cargado a mano para los services que la terminal publica con un
+ * precio único (Peugeot, Citroën). Se cargan repuestos y fluidos; la mano de
+ * obra sale por diferencia contra el precio publicado, así el total no cambia.
+ */
+export async function actualizarDesglose(
+  actor: Usuario | null,
+  planId: number,
+  desglose: { repuestos: number | null; fluidos: number | null },
+) {
+  const usuario = await exigirPermiso(actor, "servicios:editar");
+  const plan = await planesRepo.buscarPlanPorId(planId);
+  if (!plan) throw new NotFoundError("Plan no encontrado");
+
+  const rep = desglose.repuestos ?? 0;
+  const flu = desglose.fluidos ?? 0;
+  if (rep < 0 || flu < 0) throw new ValidationError("Los montos no pueden ser negativos");
+
+  const precio = plan.costoTotal ?? plan.precioSugerido ?? 0;
+  if (precio > 0 && rep + flu > precio) {
+    throw new ValidationError(
+      `Repuestos y fluidos suman más que el precio del service (${Math.round(precio)}): no quedaría nada de mano de obra`,
+    );
+  }
+
+  await planesRepo.actualizarDesglose(planId, {
+    repuestos: desglose.repuestos, fluidos: desglose.fluidos,
+  });
+  await auditoriaRepo.registrar({
+    usuarioId: usuario.id, accion: "editar", entidad: "plan", entidadId: planId,
+    detalle: `Desglose cargado a mano: repuestos ${rep}, fluidos ${flu}`,
+    fecha: ahoraArgentinaISO(),
+  });
+  return planesRepo.buscarPlanPorId(planId);
+}
+
+/**
  * Guarda las horas de mano de obra verificadas a mano contra el manual de
  * tiempos oficial de la terminal (dato de referencia: no toca costoTotal ni
  * precioSugerido, que siguen siendo los que ya tiene cargado el plan).

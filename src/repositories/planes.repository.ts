@@ -30,6 +30,8 @@ export async function listarPlanes(filtros: { modeloId?: number; marcaId?: numbe
       packRepuestosCosto: planesMantenimiento.packRepuestosCosto,
       packManoObraCosto: planesMantenimiento.packManoObraCosto,
       manoObraHorasVerificada: planesMantenimiento.manoObraHorasVerificada,
+      desgloseRepuestos: planesMantenimiento.desgloseRepuestos,
+      desgloseFluidos: planesMantenimiento.desgloseFluidos,
       modeloNombre: modelos.nombre,
       marcaNombre: marcas.nombre,
     })
@@ -112,6 +114,8 @@ export async function buscarPlanPorId(planId: number) {
       packRepuestosCosto: planesMantenimiento.packRepuestosCosto,
       packManoObraCosto: planesMantenimiento.packManoObraCosto,
       manoObraHorasVerificada: planesMantenimiento.manoObraHorasVerificada,
+      desgloseRepuestos: planesMantenimiento.desgloseRepuestos,
+      desgloseFluidos: planesMantenimiento.desgloseFluidos,
       modeloNombre: modelos.nombre,
       marcaNombre: marcas.nombre,
       marcaId: modelos.marcaId,
@@ -161,6 +165,16 @@ export async function actualizarManoObraDeItem(itemId: number, horas: number | n
 export async function buscarItemDePlan(itemId: number) {
   const [row] = await db.select().from(planRepuestos).where(eq(planRepuestos.id, itemId)).limit(1);
   return row;
+}
+
+export async function actualizarDesglose(
+  planId: number,
+  desglose: { repuestos: number | null; fluidos: number | null },
+) {
+  await db
+    .update(planesMantenimiento)
+    .set({ desgloseRepuestos: desglose.repuestos, desgloseFluidos: desglose.fluidos })
+    .where(eq(planesMantenimiento.id, planId));
 }
 
 export async function actualizarManoObraVerificada(planId: number, horas: number | null) {
