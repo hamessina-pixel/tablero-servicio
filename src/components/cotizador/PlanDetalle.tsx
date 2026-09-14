@@ -200,8 +200,11 @@ export function PlanDetalle({
     const extraFluidos = adj(plan.totalFluidos || 0);
     const manoObraExtra = adj(plan.manoObraCosto || 0);
     const tieneExtras = (plan.manoObraHoras || 0) > 0;
+    // La mano de obra global del plan queda afuera: esa estimación la
+    // reemplazan las horas que ahora se cargan repuesto por repuesto, y
+    // dejarla sumaría el mismo trabajo dos veces.
     const precioPublicado = !tienePackDesglosado && plan.costoTotal != null
-      ? adj(plan.costoTotal) + extraRepuestos + extraFluidos + manoObraExtra + manoObraItems
+      ? adj(plan.costoTotal) - manoObraExtra + extraRepuestos + extraFluidos + manoObraItems
       : null;
     const noPrice = !plan.precioSugerido && precioPublicado == null;
     const mostrarResumen = tienePackDesglosado || plan.costoTotal != null || extraRepuestos > 0 || extraFluidos > 0 || tieneExtras;
@@ -214,7 +217,7 @@ export function PlanDetalle({
     return (
       <div className="flex flex-col gap-4">
         <BotonWhatsApp onClick={noPrice ? undefined : () => window.open(
-          `https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp(plan, marcaNombre, money(precioPublicado != null ? precioPublicado : adj(plan.precioSugerido) + manoObraItems)))}`,
+          `https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp(plan, marcaNombre, money(precioPublicado != null ? precioPublicado : adj(plan.precioSugerido) - manoObraExtra + manoObraItems)))}`,
           "_blank",
         )} />
         <Aviso texto={avisoTarifaPlana(marcaNombre, plan)} />
@@ -286,12 +289,9 @@ export function PlanDetalle({
               {extraFluidos > 0 && (
                 <LineaResumen label={<Tip label="Fluidos adicionales c/IVA" texto="Costo de reposición con IVA (21%)" />} valor={money(extraFluidos)} />
               )}
-              {tieneExtras && (
-                <LineaResumen label={`Mano de obra adicional (${horasDecimal(plan.manoObraHoras)})`} valor={money(manoObraExtra)} />
-              )}
               {horasDeItems > 0 && (
                 <LineaResumen
-                  label={<Tip label={`Mano de obra por repuesto (${horasDecimal(horasDeItems)})`}
+                  label={<Tip label={`Mano de obra por adicional (${horasDecimal(horasDeItems)})`}
                               texto={`Horas cargadas en los repuestos que no entran en el pack, a ${money(plan.valorHora)} la hora`} />}
                   valor={money(manoObraItems)}
                 />
@@ -305,7 +305,7 @@ export function PlanDetalle({
         ) : (
           <TotalRow
             label={<Tip label="Precio del service c/IVA" texto={`Precio final del pack publicado por ${marcaNombre}, con IVA incluido`} />}
-            valor={money(precioPublicado != null ? precioPublicado : adj(plan.precioSugerido) + manoObraItems)}
+            valor={money(precioPublicado != null ? precioPublicado : adj(plan.precioSugerido) - manoObraExtra + manoObraItems)}
           />
         )}
         <Acciones
