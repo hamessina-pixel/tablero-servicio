@@ -13,6 +13,7 @@ import { Input, Select } from "@/components/ui/Input";
 import { money } from "@/lib/format";
 import { RepuestoModal, CrearRepuestoModal } from "@/components/repuestos/RepuestoModal";
 import { ImportarPreciosModal } from "@/components/repuestos/ImportarPreciosModal";
+import { PreciosModal } from "@/components/repuestos/PreciosModal";
 import type { Repuesto } from "@/domain/types";
 
 const CATEGORIAS = [
@@ -57,6 +58,7 @@ function RepuestosPageInner() {
   const [abiertoId, setAbiertoId] = useState<number | null>(null);
   const [crear, setCrear] = useState(false);
   const [importarPrecios, setImportarPrecios] = useState(false);
+  const [preciosId, setPreciosId] = useState<number | null>(null);
 
   const pageSize = 25;
 
@@ -127,7 +129,15 @@ function RepuestosPageInner() {
             <tbody>
               {items.map((r) => (
                 <tr key={r.id} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--surface-2)]">
-                  <td className="px-4 py-2.5 font-mono">{r.codigo}</td>
+                  <td className="px-4 py-2.5">
+                    <button
+                      onClick={() => setPreciosId(r.id)}
+                      title="Ver precios con y sin IVA"
+                      className="font-mono font-semibold text-[var(--brand)] hover:underline"
+                    >
+                      {r.codigo}
+                    </button>
+                  </td>
                   <td className="px-2 py-2.5">{r.nombre}</td>
                   <td className="px-2 py-2.5">{r.marcaNombre}</td>
                   <td className="px-2 py-2.5 text-[var(--text-muted)]">{r.categoria}</td>
@@ -164,6 +174,7 @@ function RepuestosPageInner() {
       {importarPrecios && (
         <ImportarPreciosModal marcas={marcas} onCerrar={() => setImportarPrecios(false)} onImportado={recargar} />
       )}
+      {preciosId != null && <PreciosModal repuestoId={preciosId} onCerrar={() => setPreciosId(null)} />}
     </div>
   );
 }
