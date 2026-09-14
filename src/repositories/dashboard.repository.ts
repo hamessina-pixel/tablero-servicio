@@ -85,6 +85,30 @@ export async function resumenDashboard() {
      LIMIT 8
   `);
 
+  // Lo que hay que hacer hoy: piezas ya marcadas para comprar, cuentas
+  // esperando aprobación y las últimas cotizaciones del taller.
+  const { rows: pendientes } = await db.execute(sql`
+    SELECT
+      (SELECT COUNT(*)::int FROM lista_compra)                                    AS en_lista_compra,
+      (SELECT COUNT(*)::int FROM usuarios WHERE pendiente = true)                 AS cuentas_pendientes,
+      (SELECT COUNT(*)::int FROM cotizaciones_guardadas
+        WHERE creado_en >= ${new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 19)}) AS cotizaciones_mes
+  `);
+
+  const { rows: ultimasCotizaciones } = await db.execute(sql`
+    SELECT id, marca_nombre AS marca, modelo_nombre AS modelo, km, patente, cliente, total, creado_en
+      FROM cotizaciones_guardadas ORDER BY creado_en DESC LIMIT 6
+  `);
+
+  const { rows: criticos } = await db.execute(sql`
+    SELECT ma.nombre AS marca, r.codigo, r.nombre, r.stock_actual, r.stock_minimo
+      FROM repuestos r JOIN marcas ma ON ma.id = r.marca_id
+     WHERE r.es_stock_gestionado = true AND r.stock_ficticio = false
+       AND r.stock_actual < r.stock_minimo
+     ORDER BY (r.stock_minimo - r.stock_actual) DESC
+     LIMIT 6
+  `);
+
   return {
     marcas: marcasVehiculos,
     modelos,
@@ -94,6 +118,16 @@ export async function resumenDashboard() {
     fluidos,
     planesMantenimiento: planes,
     sustituciones,
+    enListaCompra: Number(pendientes[0].en_lista_compra),
+    cuentasPendientes: Number(pendientes[0].cuentas_pendientes),
+    cotizacionesDelMes: Number(pendientes[0].cotizaciones_mes),
+    ultimasCotizaciones: ultimasCotizaciones as Array<{
+      id: number; marca: string; modelo: string; km: number;
+      patente: string | null; cliente: string | null; total: number; creado_en: string;
+    }>,
+    faltantesCriticos: criticos as Array<{
+      marca: string; codigo: string; nombre: string | null; stock_actual: number; stock_minimo: number;
+    }>,
     valorStockGestionado,
     valorStockPorMarca: valorPorMarca as Array<{ marca: string; valor: number | string }>,
     repuestosPorMarca: porMarca as Array<{ marca: string; repuestos: number }>,

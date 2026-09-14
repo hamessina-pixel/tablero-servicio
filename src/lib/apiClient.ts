@@ -74,8 +74,9 @@ export const api = {
       patch(`/api/planes/items/${itemId}/mano-obra`, { horas }),
   },
   configuracion: {
-    obtener: () => get<{ valorHora: number }>("/api/configuracion"),
-    actualizarValorHora: (valorHora: number) => patch<{ valorHora: number }>("/api/configuracion", { valorHora }),
+    obtener: () => get<{ valorHora: number; empresa: string }>("/api/configuracion"),
+    actualizar: (cambios: { valorHora?: number; empresa?: string }) =>
+      patch<{ valorHora: number; empresa: string }>("/api/configuracion", cambios),
   },
   repuestos: {
     listar: (filtros: Record<string, string | number | boolean | undefined> = {}) =>

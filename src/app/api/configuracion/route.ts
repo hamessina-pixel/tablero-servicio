@@ -5,7 +5,11 @@ import { usuarioActualDesde } from "@/lib/sesion";
 
 export async function GET() {
   try {
-    return NextResponse.json({ valorHora: await configuracionService.valorHora() });
+    const [valorHora, empresa] = await Promise.all([
+      configuracionService.valorHora(),
+      configuracionService.nombreEmpresa(),
+    ]);
+    return NextResponse.json({ valorHora, empresa });
   } catch (err) {
     return errorResponse(err);
   }
@@ -14,9 +18,16 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   try {
     const { usuario: actor } = await usuarioActualDesde(req);
-    const body = (await req.json().catch(() => ({}))) as { valorHora?: number };
-    const valorHora = await configuracionService.actualizarValorHora(actor, Number(body.valorHora));
-    return NextResponse.json({ valorHora });
+    const body = (await req.json().catch(() => ({}))) as { valorHora?: number; empresa?: string };
+
+    if (typeof body.empresa === "string") await configuracionService.actualizarNombreEmpresa(actor, body.empresa);
+    if (body.valorHora !== undefined) await configuracionService.actualizarValorHora(actor, Number(body.valorHora));
+
+    const [valorHora, empresa] = await Promise.all([
+      configuracionService.valorHora(),
+      configuracionService.nombreEmpresa(),
+    ]);
+    return NextResponse.json({ valorHora, empresa });
   } catch (err) {
     return errorResponse(err);
   }

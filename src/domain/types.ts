@@ -114,4 +114,16 @@ export interface ResumenDashboard {
   repuestosPorMarca: { marca: string; repuestos: number }[];
   modelosPorMarca: { marca: string; modelos: number }[];
   costoPorKmTop: { modelo: string; marca: string; costoPorKm: number }[];
+  /** Nombre del taller o concesionario, para encabezar la pantalla. */
+  empresa: string;
+  enListaCompra: number;
+  cuentasPendientes: number;
+  cotizacionesDelMes: number;
+  ultimasCotizaciones: {
+    id: number; marca: string; modelo: string; km: number;
+    patente: string | null; cliente: string | null; total: number; creadoEn: string;
+  }[];
+  faltantesCriticos: {
+    marca: string; codigo: string; nombre: string | null; stockActual: number; stockMinimo: number;
+  }[];
 }

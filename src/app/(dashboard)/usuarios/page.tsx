@@ -215,22 +215,30 @@ function ValorHoraCard() {
   const toast = useToast();
   const { puede } = useAuth();
   const [valor, setValor] = useState<string>("");
-  const [guardado, setGuardado] = useState<number | null>(null);
+  const [empresa, setEmpresa] = useState<string>("");
+  const [guardado, setGuardado] = useState<{ valorHora: number; empresa: string } | null>(null);
   const [guardando, setGuardando] = useState(false);
-  const puedeEditar = puede("servicios:editar");
+  const puedeHora = puede("servicios:editar");
+  const puedeEmpresa = puede("usuarios:gestionar");
 
   useEffect(() => {
-    api.configuracion.obtener().then((c) => { setGuardado(c.valorHora); setValor(String(c.valorHora)); });
+    api.configuracion.obtener().then((c) => {
+      setGuardado(c); setValor(String(c.valorHora)); setEmpresa(c.empresa);
+    });
   }, []);
 
   async function guardar() {
     const n = Number(valor.replace(",", "."));
-    if (!Number.isFinite(n) || n <= 0) { toast("Ingresá un valor mayor a 0", "error"); return; }
+    if (!Number.isFinite(n) || n <= 0) { toast("El valor de la hora tiene que ser mayor a 0", "error"); return; }
+    if (!empresa.trim()) { toast("Escribí el nombre del taller", "error"); return; }
     setGuardando(true);
     try {
-      const r = await api.configuracion.actualizarValorHora(n);
-      setGuardado(r.valorHora);
-      toast("Valor de la hora actualizado", "success");
+      const r = await api.configuracion.actualizar({
+        ...(puedeHora && n !== guardado?.valorHora ? { valorHora: n } : {}),
+        ...(puedeEmpresa && empresa.trim() !== guardado?.empresa ? { empresa: empresa.trim() } : {}),
+      });
+      setGuardado(r);
+      toast("Configuración actualizada", "success");
     } catch (err) {
       toast(err instanceof ApiError ? err.message : "No se pudo guardar", "error");
     } finally {
@@ -238,31 +246,45 @@ function ValorHoraCard() {
     }
   }
 
-  const cambio = guardado != null && Number(valor.replace(",", ".")) !== guardado;
+  const cambio = guardado != null
+    && (Number(valor.replace(",", ".")) !== guardado.valorHora || empresa.trim() !== guardado.empresa);
 
   return (
     <Card>
-      <CardTitle>Valor de la hora de taller</CardTitle>
-      <p className="mb-2 mt-1 text-[12px] text-[var(--text-muted)]">
-        Con esto el cotizador convierte a pesos las horas de mano de obra que se cargan en cada repuesto.
-      </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          type="number"
-          className="max-w-[180px]"
-          value={valor}
-          disabled={!puedeEditar}
-          onChange={(e) => setValor(e.target.value)}
-        />
-        {cambio && puedeEditar && (
-          <Button variante="primary" tamano="sm" onClick={guardar} disabled={guardando}>Guardar</Button>
-        )}
-        {!puedeEditar && (
-          <span className="text-[12px] text-[var(--text-muted)]">
-            Tu nivel de acceso no permite cambiarlo.
+      <CardTitle>Configuración del taller</CardTitle>
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="block text-[12px] font-semibold text-[var(--text-secondary)]">
+          Nombre del taller o concesionario
+          <Input
+            className="mt-1"
+            value={empresa}
+            disabled={!puedeEmpresa}
+            placeholder="Ej.: Rodas Automotores"
+            onChange={(e) => setEmpresa(e.target.value)}
+          />
+          <span className="mt-1 block text-[11px] font-normal text-[var(--text-muted)]">
+            Encabeza la pantalla de Inicio.
           </span>
-        )}
+        </label>
+        <label className="block text-[12px] font-semibold text-[var(--text-secondary)]">
+          Valor de la hora de taller
+          <Input
+            type="number"
+            className="mt-1"
+            value={valor}
+            disabled={!puedeHora}
+            onChange={(e) => setValor(e.target.value)}
+          />
+          <span className="mt-1 block text-[11px] font-normal text-[var(--text-muted)]">
+            Con esto el cotizador pasa a pesos las horas cargadas en cada repuesto.
+          </span>
+        </label>
       </div>
+      {cambio && (puedeHora || puedeEmpresa) && (
+        <div className="mt-3">
+          <Button variante="primary" tamano="sm" onClick={guardar} disabled={guardando}>Guardar cambios</Button>
+        </div>
+      )}
     </Card>
   );
 }
