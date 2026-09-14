@@ -42,7 +42,7 @@ async function main() {
   chequear("no es la primera cuenta", false, estado.primeraCuenta);
   const roles = await authService.roles();
   const admin = roles.find((r: { rol: string }) => r.rol === "admin")!;
-  chequear("admin tiene 9 permisos", 9, admin.permisos.length);
+  chequear("admin tiene 10 permisos", 10, admin.permisos.length);
 
   const [adminReal] = await db.select().from(usuarios).where(eq(usuarios.rol, "admin")).limit(1);
   if (!adminReal) throw new Error("No hay ningun admin real en la base — no se puede probar");
@@ -74,7 +74,7 @@ async function main() {
   console.log("== login ya aprobada ==");
   const { usuario: sesionUsuario, token: tokenEditor } = await authService.login(USUARIO_TEST, "test1234");
   chequear("rol en la sesion", "editor", sesionUsuario.rol);
-  chequear("permisos de editor (7)", 7, sesionUsuario.permisos.length);
+  chequear("permisos de editor (8)", 8, sesionUsuario.permisos.length);
 
   const resuelto = await authService.resolverUsuarioActual(tokenEditor);
   chequear("resolverUsuarioActual encuentra la sesion", USUARIO_TEST, resuelto?.usuario);

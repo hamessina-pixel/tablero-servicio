@@ -50,12 +50,16 @@ export interface StockDeCodigo {
 /** Ítem de un plan (repuesto o fluido) ya enriquecido con su stock en vivo y
  *  sus equivalentes — lo que el Cotizador necesita para pintar la fila. */
 export interface ItemDePlanConStock {
+  /** Id de la fila en el plan — hace falta para cargarle mano de obra. Los
+   *  fluidos no lo traen porque esa carga es solo de repuestos. */
+  itemId?: number;
   nombre: string | null;
   codigo?: string | null;
   producto?: string | null;
   cantidad?: number | null;
   litros?: number | null;
   precioUnitario?: number | null;
+  manoObraHoras?: number | null;
   total: number | null;
   esStockGestionado: boolean;
   stockActual: number | null;
@@ -73,6 +77,8 @@ export interface PlanConDetalle extends PlanMantenimiento {
   fluidos: ItemDePlanConStock[];
   checklist: PlanChecklistItem[];
   flag: { item: string | null; nota: string | null } | null;
+  /** Cuánto se cobra la hora de taller al momento de abrir el plan. */
+  valorHora: number;
 }
 
 export interface ResumenPorModelo {

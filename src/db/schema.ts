@@ -125,6 +125,10 @@ export const planRepuestos = pgTable("plan_repuestos", {
   cantidad: doublePrecision("cantidad"),
   precioUnitario: doublePrecision("precio_unitario"),
   total: doublePrecision("total"),
+  // Horas de taller que lleva cambiar esta pieza en particular. Se usa en los
+  // repuestos que quedan fuera del pack cerrado (p.ej. las bujías de un
+  // service): el pack ya trae su propia mano de obra adentro del precio.
+  manoObraHoras: doublePrecision("mano_obra_horas"),
 }, (t) => ({
   planIdx: index("idx_plan_repuestos_plan").on(t.planId),
   repuestoIdx: index("idx_plan_repuestos_repuesto").on(t.repuestoId),
@@ -315,6 +319,15 @@ export const sesiones = pgTable("sesiones", {
 }, (t) => ({
   tokenIdx: index("idx_sesiones_token").on(t.tokenHash),
 }));
+
+/** Parámetros que el taller cambia solo (hoy: cuánto se cobra la hora de
+ *  trabajo). Van en la base y no en el código para que no haga falta un
+ *  despliegue cada vez que suben los precios. */
+export const configuracion = pgTable("configuracion", {
+  clave: text("clave").primaryKey(),
+  valor: text("valor").notNull(),
+  actualizadoEn: text("actualizado_en").notNull(),
+});
 
 export const auditoria = pgTable("auditoria", {
   id: serial("id").primaryKey(),

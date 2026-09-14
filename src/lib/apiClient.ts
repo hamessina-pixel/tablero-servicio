@@ -70,6 +70,12 @@ export const api = {
     obtener: (id: number) => get<PlanConDetalle>(`/api/planes/${id}`),
     actualizarManoObraVerificada: (id: number, horas: number | null) =>
       patch<PlanMantenimiento>(`/api/planes/${id}/mano-obra-verificada`, { horas }),
+    actualizarManoObraDeItem: (itemId: number, horas: number | null) =>
+      patch(`/api/planes/items/${itemId}/mano-obra`, { horas }),
+  },
+  configuracion: {
+    obtener: () => get<{ valorHora: number }>("/api/configuracion"),
+    actualizarValorHora: (valorHora: number) => patch<{ valorHora: number }>("/api/configuracion", { valorHora }),
   },
   repuestos: {
     listar: (filtros: Record<string, string | number | boolean | undefined> = {}) =>

@@ -137,7 +137,7 @@ export function PlanDetalle({
   onGuardarHistorial?: () => void;
   onPlanActualizado?: () => void;
 }) {
-  const { requirePermiso } = useAuth();
+  const { requirePermiso, usuario, puede } = useAuth();
   // Qué código equivalente se usa en lugar del que trae el plan — elección de
   // esta cotización, no del catálogo: se reinicia al cambiar de plan.
   const [elegidos, setElegidos] = useState<Record<string, StockDeCodigo>>({});
@@ -153,6 +153,20 @@ export function PlanDetalle({
   const imprimir = () => window.print();
   const exportar = async () => {
     if (await requirePermiso("exportar:excel")) exportarExcelCotizacion(plan, marcaNombre, adj, elegidos);
+  };
+
+  // Mano de obra de las piezas que se cambian aparte del pack: se cobra además
+  // de la que ya trae el plan.
+  const horasDeItems = plan.repuestos.reduce((a, r) => a + (r.manoObraHoras ?? 0), 0);
+  const manoObraItems = adj(horasDeItems * plan.valorHora);
+  const manoObra = {
+    valorHora: plan.valorHora,
+    puedeEditar: !usuario || puede("servicios:editar"),
+    onGuardar: async (itemId: number, horas: number | null) => {
+      if (!(await requirePermiso("servicios:editar"))) return;
+      await api.planes.actualizarManoObraDeItem(itemId, horas);
+      onPlanActualizado?.();
+    },
   };
 
   if (plan.esFlatRate && !plan.repuestos.length && !plan.fluidos.length && plan.checklist.length) {
@@ -187,7 +201,7 @@ export function PlanDetalle({
     const manoObraExtra = adj(plan.manoObraCosto || 0);
     const tieneExtras = (plan.manoObraHoras || 0) > 0;
     const precioPublicado = !tienePackDesglosado && plan.costoTotal != null
-      ? adj(plan.costoTotal) + extraRepuestos + extraFluidos + manoObraExtra
+      ? adj(plan.costoTotal) + extraRepuestos + extraFluidos + manoObraExtra + manoObraItems
       : null;
     const noPrice = !plan.precioSugerido && precioPublicado == null;
     const mostrarResumen = tienePackDesglosado || plan.costoTotal != null || extraRepuestos > 0 || extraFluidos > 0 || tieneExtras;
@@ -200,7 +214,7 @@ export function PlanDetalle({
     return (
       <div className="flex flex-col gap-4">
         <BotonWhatsApp onClick={noPrice ? undefined : () => window.open(
-          `https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp(plan, marcaNombre, money(precioPublicado != null ? precioPublicado : adj(plan.precioSugerido))))}`,
+          `https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp(plan, marcaNombre, money(precioPublicado != null ? precioPublicado : adj(plan.precioSugerido) + manoObraItems)))}`,
           "_blank",
         )} />
         <Aviso texto={avisoTarifaPlana(marcaNombre, plan)} />
@@ -224,6 +238,7 @@ export function PlanDetalle({
             adj={adj}
             elegidos={elegidos}
             onElegir={elegir}
+            manoObra={manoObra}
           />
         </Card>
         <Card>
@@ -274,6 +289,13 @@ export function PlanDetalle({
               {tieneExtras && (
                 <LineaResumen label={`Mano de obra adicional (${horasDecimal(plan.manoObraHoras)})`} valor={money(manoObraExtra)} />
               )}
+              {horasDeItems > 0 && (
+                <LineaResumen
+                  label={<Tip label={`Mano de obra por repuesto (${horasDecimal(horasDeItems)})`}
+                              texto={`Horas cargadas en los repuestos que no entran en el pack, a ${money(plan.valorHora)} la hora`} />}
+                  valor={money(manoObraItems)}
+                />
+              )}
             </div>
           </Card>
         )}
@@ -283,7 +305,7 @@ export function PlanDetalle({
         ) : (
           <TotalRow
             label={<Tip label="Precio del service c/IVA" texto={`Precio final del pack publicado por ${marcaNombre}, con IVA incluido`} />}
-            valor={money(precioPublicado != null ? precioPublicado : adj(plan.precioSugerido))}
+            valor={money(precioPublicado != null ? precioPublicado : adj(plan.precioSugerido) + manoObraItems)}
           />
         )}
         <Acciones
@@ -298,11 +320,11 @@ export function PlanDetalle({
   // Plan normal (BAIC / ARCFOX): donut de composición.
   const crep = adj(plan.totalRepuestos || 0);
   const cflu = adj(plan.totalFluidos || 0);
-  const cmo = adj(plan.manoObraCosto || 0);
+  const cmo = adj(plan.manoObraCosto || 0) + manoObraItems;
   return (
     <div className="flex flex-col gap-4">
       <BotonWhatsApp onClick={() => window.open(
-        `https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp(plan, marcaNombre, plan.precioSugerido != null ? money(adj(plan.precioSugerido)) : money(crep + cflu + cmo)))}`,
+        `https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp(plan, marcaNombre, plan.precioSugerido != null ? money(adj(plan.precioSugerido) + manoObraItems) : money(crep + cflu + cmo)))}`,
         "_blank",
       )} />
       <Card>
@@ -313,7 +335,8 @@ export function PlanDetalle({
             segmentos={[
               { label: "Repuestos", value: crep, color: "var(--cz-slice-rep)" },
               { label: "Fluidos", value: cflu, color: "var(--cz-slice-flu)" },
-              { label: "Mano de obra", value: cmo, color: "var(--cz-slice-mo)", etiqueta: `Mano de obra (${horasDecimal(plan.manoObraHoras)})` },
+              { label: "Mano de obra", value: cmo, color: "var(--cz-slice-mo)",
+                etiqueta: `Mano de obra (${horasDecimal((plan.manoObraHoras ?? 0) + horasDeItems)})` },
             ]}
           />
         </div>
@@ -324,7 +347,7 @@ export function PlanDetalle({
       <Card>
         <CardTitle>Repuestos</CardTitle>
         <TablaItems filas={plan.repuestos} campoCodigo="codigo" esBasico={() => false} adj={adj}
-                    elegidos={elegidos} onElegir={elegir} />
+                    elegidos={elegidos} onElegir={elegir} manoObra={manoObra} />
       </Card>
       <Card>
         <CardTitle>Fluidos</CardTitle>
@@ -341,7 +364,9 @@ export function PlanDetalle({
       )}
       <BloqueLubricacion lub={lub} />
       <TotalRow label="Costo total del servicio" valor={money(crep + cflu + cmo)} />
-      {plan.precioSugerido != null && <TotalRow label="Precio sugerido al público" valor={money(adj(plan.precioSugerido))} />}
+      {plan.precioSugerido != null && (
+        <TotalRow label="Precio sugerido al público" valor={money(adj(plan.precioSugerido) + manoObraItems)} />
+      )}
       <Acciones
         onGuardar={onGuardarHistorial}
         onImprimir={imprimir}
@@ -436,7 +461,7 @@ function precioCelda(basico: boolean, total: number | null, adj: (v: number | nu
 }
 
 function TablaItems({
-  filas, campoCodigo, esBasico, adj, elegidos, onElegir,
+  filas, campoCodigo, esBasico, adj, elegidos, onElegir, manoObra,
 }: {
   filas: ItemDePlanConStock[];
   campoCodigo: "codigo" | "producto";
@@ -444,6 +469,7 @@ function TablaItems({
   adj: (v: number | null | undefined) => number;
   elegidos?: Record<string, StockDeCodigo>;
   onElegir?: (codigoOriginal: string, equivalente: StockDeCodigo | null) => void;
+  manoObra?: { valorHora: number; puedeEditar: boolean; onGuardar: (itemId: number, horas: number | null) => Promise<void> };
 }) {
   if (!filas.length) {
     return <p className="py-2 text-[13px] text-[var(--text-muted)]">No requiere {campoCodigo === "codigo" ? "repuestos" : "fluidos"}.</p>;
@@ -457,6 +483,7 @@ function TablaItems({
             <th className="py-2 pr-2 font-semibold">{campoCodigo === "codigo" ? "Código" : "Producto"}</th>
             <th className="py-2 pr-2 text-center font-semibold">Cant.</th>
             <th className="py-2 pr-2 font-semibold">Stock</th>
+            {manoObra && <th className="py-2 pr-2 font-semibold">Mano de obra</th>}
             <th className="py-2 text-right font-semibold">Total c/IVA</th>
           </tr>
         </thead>
@@ -496,6 +523,17 @@ function TablaItems({
                 </td>
                 <td className="py-2 pr-2 text-center">{campoCodigo === "codigo" ? f.cantidad : (f.litros ?? "—")}</td>
                 <td className="py-2 pr-2"><StockDot item={elegido ?? f} /></td>
+                {manoObra && (
+                  <td className="py-2 pr-2">
+                    {basico ? (
+                      <span className="text-[11.5px] text-[var(--text-muted)]" title="El pack ya trae su mano de obra adentro del precio cerrado">
+                        incluida en el pack
+                      </span>
+                    ) : (
+                      <ManoObraItem item={f} {...manoObra} />
+                    )}
+                  </td>
+                )}
                 <td className="py-2 text-right">{precioCelda(basico, f.total, adj)}</td>
               </tr>
             );
@@ -503,6 +541,76 @@ function TablaItems({
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** Horas de taller de una pieza que se cambia aparte del pack. Se carga en
+ *  horas y el importe sale de multiplicarlas por el valor hora del taller. */
+function ManoObraItem({
+  item, valorHora, puedeEditar, onGuardar,
+}: {
+  item: ItemDePlanConStock;
+  valorHora: number;
+  puedeEditar: boolean;
+  onGuardar: (itemId: number, horas: number | null) => Promise<void>;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [texto, setTexto] = useState(item.manoObraHoras?.toString() ?? "");
+  const [guardando, setGuardando] = useState(false);
+
+  if (item.itemId == null) return <span className="text-[var(--text-muted)]">—</span>;
+
+  async function guardar(horas: number | null) {
+    setGuardando(true);
+    try {
+      await onGuardar(item.itemId!, horas);
+      setEditando(false);
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  if (editando) {
+    return (
+      <div className="flex items-center gap-1">
+        <Input
+          type="number"
+          step="0.1"
+          autoFocus
+          className="!w-16 !px-1.5 !py-1 !text-[12px]"
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+        />
+        <span className="text-[11px] text-[var(--text-muted)]">hs</span>
+        <button
+          disabled={guardando}
+          onClick={() => guardar(texto.trim() ? Number(texto.replace(",", ".")) : null)}
+          className="text-[11.5px] font-semibold text-[var(--brand)] hover:underline"
+        >
+          ok
+        </button>
+        <button onClick={() => { setTexto(item.manoObraHoras?.toString() ?? ""); setEditando(false); }}
+                className="text-[11.5px] text-[var(--text-muted)] hover:underline">
+          x
+        </button>
+      </div>
+    );
+  }
+
+  if (item.manoObraHoras == null) {
+    return puedeEditar
+      ? <button onClick={() => setEditando(true)} className="text-[11.5px] text-[var(--brand)] hover:underline">+ cargar</button>
+      : <span className="text-[11.5px] text-[var(--text-muted)]">—</span>;
+  }
+
+  return (
+    <span className="flex items-center gap-1.5 text-[12px]">
+      <span className="font-semibold">{horasDecimal(item.manoObraHoras)}</span>
+      <span className="text-[var(--text-muted)]">{money(item.manoObraHoras * valorHora)}</span>
+      {puedeEditar && (
+        <button onClick={() => setEditando(true)} className="text-[11px] text-[var(--brand)] hover:underline">editar</button>
+      )}
+    </span>
   );
 }
 

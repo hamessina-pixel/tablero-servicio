@@ -109,6 +109,8 @@ function UsuariosAdmin({ yoId }: { yoId: number }) {
         </div>
       </Card>
 
+      <ValorHoraCard />
+
       <Card>
         <CardTitle>Niveles de acceso</CardTitle>
         <p className="mb-2 mt-1 text-[12px] text-[var(--text-muted)]">
@@ -204,6 +206,64 @@ function UsuarioFormModal({
         </div>
       </div>
     </div>
+  );
+}
+
+/** Cuánto se cobra la hora de taller. Lo usa el cotizador para pasar a pesos
+ *  las horas cargadas en cada repuesto. */
+function ValorHoraCard() {
+  const toast = useToast();
+  const { puede } = useAuth();
+  const [valor, setValor] = useState<string>("");
+  const [guardado, setGuardado] = useState<number | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const puedeEditar = puede("servicios:editar");
+
+  useEffect(() => {
+    api.configuracion.obtener().then((c) => { setGuardado(c.valorHora); setValor(String(c.valorHora)); });
+  }, []);
+
+  async function guardar() {
+    const n = Number(valor.replace(",", "."));
+    if (!Number.isFinite(n) || n <= 0) { toast("Ingresá un valor mayor a 0", "error"); return; }
+    setGuardando(true);
+    try {
+      const r = await api.configuracion.actualizarValorHora(n);
+      setGuardado(r.valorHora);
+      toast("Valor de la hora actualizado", "success");
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "No se pudo guardar", "error");
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  const cambio = guardado != null && Number(valor.replace(",", ".")) !== guardado;
+
+  return (
+    <Card>
+      <CardTitle>Valor de la hora de taller</CardTitle>
+      <p className="mb-2 mt-1 text-[12px] text-[var(--text-muted)]">
+        Con esto el cotizador convierte a pesos las horas de mano de obra que se cargan en cada repuesto.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          type="number"
+          className="max-w-[180px]"
+          value={valor}
+          disabled={!puedeEditar}
+          onChange={(e) => setValor(e.target.value)}
+        />
+        {cambio && puedeEditar && (
+          <Button variante="primary" tamano="sm" onClick={guardar} disabled={guardando}>Guardar</Button>
+        )}
+        {!puedeEditar && (
+          <span className="text-[12px] text-[var(--text-muted)]">
+            Tu nivel de acceso no permite cambiarlo.
+          </span>
+        )}
+      </div>
+    </Card>
   );
 }
 

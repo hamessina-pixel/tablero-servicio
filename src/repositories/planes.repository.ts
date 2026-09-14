@@ -148,6 +148,21 @@ export async function checklistDelPlan(planId: number) {
     .orderBy(asc(planChecklist.id));
 }
 
+/** Horas de taller de un ítem puntual del plan (p.ej. las bujías). */
+export async function actualizarManoObraDeItem(itemId: number, horas: number | null) {
+  const [row] = await db
+    .update(planRepuestos)
+    .set({ manoObraHoras: horas })
+    .where(eq(planRepuestos.id, itemId))
+    .returning();
+  return row;
+}
+
+export async function buscarItemDePlan(itemId: number) {
+  const [row] = await db.select().from(planRepuestos).where(eq(planRepuestos.id, itemId)).limit(1);
+  return row;
+}
+
 export async function actualizarManoObraVerificada(planId: number, horas: number | null) {
   await db.update(planesMantenimiento).set({ manoObraHorasVerificada: horas }).where(eq(planesMantenimiento.id, planId));
 }

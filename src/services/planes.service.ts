@@ -5,6 +5,7 @@
 import * as planesRepo from "@/repositories/planes.repository";
 import * as repuestosRepo from "@/repositories/repuestos.repository";
 import * as auditoriaRepo from "@/repositories/auditoria.repository";
+import * as configuracionService from "@/services/configuracion.service";
 import { buscarEquivalentesConStock } from "@/services/repuestos.service";
 import { exigirPermiso } from "@/services/auth.service";
 import { ahoraArgentinaISO } from "@/lib/fecha";
@@ -25,10 +26,12 @@ async function enriquecerRepuestos(marcaId: number, filas: PlanRepuesto[]): Prom
       codigo ? buscarEquivalentesConStock(codigo) : Promise.resolve([]),
     ]);
     return {
+      itemId: it.id,
       nombre: it.nombre,
       codigo: it.codigo,
       cantidad: it.cantidad,
       precioUnitario: it.precioUnitario,
+      manoObraHoras: it.manoObraHoras,
       total: it.total,
       esStockGestionado: stock?.esStockGestionado ?? false,
       stockActual: stock?.stockActual ?? null,
@@ -131,7 +134,37 @@ export async function obtenerPlan(planId: number): Promise<PlanConDetalle> {
     enriquecerFluidos(plan.marcaId, fluidosFilas),
   ]);
 
-  return { ...plan, repuestos, fluidos, checklist, flag: flag ?? null };
+  // El valor de la hora viaja con el plan: el cotizador lo necesita para
+  // pasar a pesos las horas cargadas en cada repuesto.
+  const valorHora = await configuracionService.valorHora();
+  return { ...plan, repuestos, fluidos, checklist, flag: flag ?? null, valorHora };
+}
+
+/**
+ * Carga las horas de taller que lleva cambiar una pieza puntual del service
+ * (las bujías de un 30.000, por ejemplo). Se cobran aparte del pack: el pack
+ * ya trae su propia mano de obra adentro del precio cerrado, así que esto se
+ * suma a la mano de obra adicional que el plan ya tuviera.
+ */
+export async function actualizarManoObraDeItem(
+  actor: Usuario | null,
+  itemId: number,
+  horas: number | null,
+) {
+  const usuario = await exigirPermiso(actor, "servicios:editar");
+  const item = await planesRepo.buscarItemDePlan(itemId);
+  if (!item) throw new NotFoundError("Repuesto del plan no encontrado");
+  if (horas != null && (horas <= 0 || horas > 24)) {
+    throw new ValidationError("Las horas tienen que estar entre 0 y 24");
+  }
+
+  const actualizado = await planesRepo.actualizarManoObraDeItem(itemId, horas);
+  await auditoriaRepo.registrar({
+    usuarioId: usuario.id, accion: "editar", entidad: "plan", entidadId: item.planId,
+    detalle: `Mano de obra de "${item.nombre ?? item.codigo}": ${horas ?? "sin cargar"} hs`,
+    fecha: ahoraArgentinaISO(),
+  });
+  return actualizado;
 }
 
 /**

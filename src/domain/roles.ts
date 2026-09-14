@@ -43,6 +43,7 @@ export const PERMISOS_CATALOGO = [
   { permiso: "pedidos:crear", label: "Generar pedidos de compra" },
   { permiso: "pedidos:eliminar", label: "Eliminar pedidos de compra" },
   { permiso: "exportar:excel", label: "Exportar a Excel" },
+  { permiso: "servicios:editar", label: "Editar mano de obra y valor hora de los services" },
   { permiso: "usuarios:gestionar", label: "Gestionar usuarios" },
   { permiso: "auditoria:ver", label: "Ver auditoría" },
 ] as const;
@@ -53,10 +54,11 @@ export const PERMISOS_POR_DEFECTO: Record<Rol, string[]> = {
   admin: [
     "stock:editar", "precios:editar", "repuestos:crear", "repuestos:eliminar",
     "pedidos:crear", "pedidos:eliminar", "usuarios:gestionar", "auditoria:ver", "exportar:excel",
+    "servicios:editar",
   ],
   editor: [
     "stock:editar", "precios:editar", "repuestos:crear", "repuestos:eliminar",
-    "pedidos:crear", "pedidos:eliminar", "exportar:excel",
+    "pedidos:crear", "pedidos:eliminar", "exportar:excel", "servicios:editar",
   ],
   ventas: ["stock:editar", "pedidos:crear"],
   lector: [],
