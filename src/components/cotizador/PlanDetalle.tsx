@@ -198,8 +198,8 @@ export function PlanDetalle({
       precioPublicado, hayDesgloseManual, precioCerrado, precioCerradoBase, manualRep, manualFlu,
     } = cuentasFlatRate(plan, adj);
     const noPrice = precioPublicado == null;
-    const mostrarResumen = tienePackDesglosado || plan.costoTotal != null
-      || extraRepuestos > 0 || extraFluidos > 0 || tieneExtras;
+    const mostrarResumen = !plan.sinDesglose && (tienePackDesglosado || plan.costoTotal != null
+      || extraRepuestos > 0 || extraFluidos > 0 || tieneExtras);
 
     const composicion = tienePackDesglosado
       ? [
@@ -287,7 +287,9 @@ export function PlanDetalle({
 
         <Card>
           <CardTitle>Composición del costo</CardTitle>
-          {tienePackDesglosado || hayDesgloseManual ? (
+          {plan.sinDesglose ? (
+            <AvisoSinDesglose />
+          ) : tienePackDesglosado || hayDesgloseManual ? (
             <>
               <p className="text-[12px] text-[var(--text-muted)]">
                 {tienePackDesglosado
@@ -305,7 +307,7 @@ export function PlanDetalle({
               {plan.repuestos.some((r) => !r.codigo) && ", ni el número de pieza de lo que cambia"}.
             </p>
           )}
-          {!tienePackDesglosado && (
+          {!tienePackDesglosado && !plan.sinDesglose && (
             <DesgloseManual
               plan={plan}
               precioCerrado={precioCerrado}
@@ -379,20 +381,26 @@ export function PlanDetalle({
       )} />
       <Card>
         <CardTitle>Composición del costo</CardTitle>
-        <div className="mt-3">
-          <Donut
-            formatMoneda={money}
-            segmentos={[
-              { label: "Repuestos", value: crep, color: "var(--cz-slice-rep)" },
-              { label: "Fluidos", value: cflu, color: "var(--cz-slice-flu)" },
-              { label: "Mano de obra", value: cmo, color: "var(--cz-slice-mo)",
-                etiqueta: `Mano de obra (${horasDecimal((plan.manoObraHoras ?? 0) + horasDeItems)})` },
-            ]}
-          />
-        </div>
-        <div className="mt-3 border-t border-[var(--border)] pt-2">
-          <ManoObraVerificada plan={plan} onGuardado={onPlanActualizado} />
-        </div>
+        {plan.sinDesglose ? (
+          <AvisoSinDesglose />
+        ) : (
+          <>
+            <div className="mt-3">
+              <Donut
+                formatMoneda={money}
+                segmentos={[
+                  { label: "Repuestos", value: crep, color: "var(--cz-slice-rep)" },
+                  { label: "Fluidos", value: cflu, color: "var(--cz-slice-flu)" },
+                  { label: "Mano de obra", value: cmo, color: "var(--cz-slice-mo)",
+                    etiqueta: `Mano de obra (${horasDecimal((plan.manoObraHoras ?? 0) + horasDeItems)})` },
+                ]}
+              />
+            </div>
+            <div className="mt-3 border-t border-[var(--border)] pt-2">
+              <ManoObraVerificada plan={plan} onGuardado={onPlanActualizado} />
+            </div>
+          </>
+        )}
       </Card>
       <Card>
         <CardTitle>Repuestos</CardTitle>
@@ -413,7 +421,7 @@ export function PlanDetalle({
         </Card>
       )}
       <BloqueLubricacion lub={lub} />
-      <TotalRow label="Costo total del servicio" valor={money(crep + cflu + cmo)} />
+      {!plan.sinDesglose && <TotalRow label="Costo total del servicio" valor={money(crep + cflu + cmo)} />}
       {plan.precioSugerido != null && (
         <TotalRow label="Precio sugerido al público" valor={money(adj(plan.precioSugerido) + manoObraItems)} />
       )}
@@ -423,6 +431,17 @@ export function PlanDetalle({
         onExportar={exportar}
       />
     </div>
+  );
+}
+
+/** Sin sesión llega el precio del service pero no cómo se compone: se dice
+ *  por qué, en vez de dibujar una dona de ceros. */
+function AvisoSinDesglose() {
+  return (
+    <p className="mt-1.5 text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
+      El desglose entre repuestos, fluidos y mano de obra es información interna del taller.
+      Iniciá sesión para verlo.
+    </p>
   );
 }
 

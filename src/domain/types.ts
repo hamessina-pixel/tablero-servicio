@@ -79,6 +79,9 @@ export interface PlanConDetalle extends PlanMantenimiento {
   flag: { item: string | null; nota: string | null } | null;
   /** Cuánto se cobra la hora de taller al momento de abrir el plan. */
   valorHora: number;
+  /** Lo marca el servidor cuando no hay sesión: llegó el precio del service
+   *  pero no cómo se compone, así que no hay desglose para mostrar. */
+  sinDesglose?: boolean;
 }
 
 export interface ResumenPorModelo {
