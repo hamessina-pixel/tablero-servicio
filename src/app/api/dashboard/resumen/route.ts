@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as dashboardService from "@/services/dashboard.service";
 import { requireUsuario } from "@/services/auth.service";
 import { errorResponse } from "@/lib/http";
+import { sinCache } from "@/lib/cache";
 import { usuarioActualDesde } from "@/lib/sesion";
 
 // El panel resume cuánta plata hay inmovilizada en el depósito y cómo se
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
     const { usuario } = await usuarioActualDesde(req);
     requireUsuario(usuario);
     const data = await dashboardService.resumen();
-    return NextResponse.json(data);
+    return NextResponse.json(data, { headers: sinCache() });
   } catch (err) {
     return errorResponse(err);
   }

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as pedidosService from "@/services/pedidos.service";
 import { errorResponse } from "@/lib/http";
+import { sinCache } from "@/lib/cache";
 import { usuarioActualDesde } from "@/lib/sesion";
 
 export async function GET() {
   try {
     const data = await pedidosService.listarPedidos();
-    return NextResponse.json(data);
+    return NextResponse.json(data, { headers: sinCache() });
   } catch (err) {
     return errorResponse(err);
   }

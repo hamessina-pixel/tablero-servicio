@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as service from "@/services/cotizacionesGuardadas.service";
 import { errorResponse } from "@/lib/http";
+import { sinCache } from "@/lib/cache";
 import { usuarioActualDesde } from "@/lib/sesion";
 
 export async function GET(req: NextRequest) {
   try {
     const q = req.nextUrl.searchParams.get("q") ?? undefined;
     const data = await service.buscarCotizaciones(q);
-    return NextResponse.json(data);
+    return NextResponse.json(data, { headers: sinCache() });
   } catch (err) {
     return errorResponse(err);
   }

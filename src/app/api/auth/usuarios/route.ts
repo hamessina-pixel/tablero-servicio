@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as usuariosService from "@/services/usuarios.service";
 import { ValidationError } from "@/domain/errors";
 import { errorResponse } from "@/lib/http";
+import { sinCache } from "@/lib/cache";
 import { usuarioActualDesde } from "@/lib/sesion";
 
 export async function GET(req: NextRequest) {
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
     const { usuario: actor } = await usuarioActualDesde(req);
     const body = validarBody(await req.json().catch(() => null));
     const data = await usuariosService.crearUsuario(actor, body);
-    return NextResponse.json(data);
+    return NextResponse.json(data, { headers: sinCache() });
   } catch (err) {
     return errorResponse(err);
   }

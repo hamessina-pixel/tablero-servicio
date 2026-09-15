@@ -8,6 +8,16 @@
  * sesión (precios de costo, stock, panel) puede pasar por acá: quedaría
  * guardado y se le serviría a otro.
  */
+/**
+ * Prohíbe guardar la respuesta en cualquier caché intermedio. Va en todo lo
+ * que cambia según quién pregunte: la misma dirección devuelve el costo a
+ * quien inició sesión y lo oculta al resto, así que si un proxy guardara una
+ * respuesta podría entregarle a un anónimo los precios de costo del taller.
+ */
+export function sinCache() {
+  return { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie" };
+}
+
 export function cacheCompartido(segundos: number) {
   return {
     // `stale-while-revalidate` deja servir la copia vieja mientras se busca la

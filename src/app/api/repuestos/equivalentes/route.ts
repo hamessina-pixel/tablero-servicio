@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as repuestosService from "@/services/repuestos.service";
 import { ValidationError } from "@/domain/errors";
 import { errorResponse } from "@/lib/http";
+import { sinCache } from "@/lib/cache";
 import { usuarioActualDesde } from "@/lib/sesion";
 import { sinCostoSiNoHaySesion } from "@/lib/visibilidad";
 
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
       ...data,
       propio: data.propio.map((p) => sinCostoSiNoHaySesion(p, usuario)),
       equivalentes: data.equivalentes.map((e) => sinCostoSiNoHaySesion(e, usuario)),
-    });
+    }, { headers: sinCache() });
   } catch (err) {
     return errorResponse(err);
   }

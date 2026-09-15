@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as repuestosService from "@/services/repuestos.service";
 import { ValidationError } from "@/domain/errors";
-import { errorResponse, parseBoolParam, parseIntParamOpcional } from "@/lib/http";
+import { errorResponse, numeroSeguro, parseBoolParam, parseIntParamOpcional } from "@/lib/http";
+import { sinCache } from "@/lib/cache";
 import { usuarioActualDesde } from "@/lib/sesion";
 import { sinCostoSiNoHaySesion } from "@/lib/visibilidad";
 
@@ -18,11 +19,18 @@ export async function GET(req: NextRequest) {
       page: parseIntParamOpcional(searchParams.get("page"), "page"),
       pageSize: parseIntParamOpcional(searchParams.get("pageSize"), "pageSize"),
     });
-    return NextResponse.json({ ...data, items: data.items.map((r) => sinCostoSiNoHaySesion(r, usuario)) });
+    return NextResponse.json(
+      { ...data, items: data.items.map((r) => sinCostoSiNoHaySesion(r, usuario)) },
+      { headers: sinCache() },
+    );
   } catch (err) {
     return errorResponse(err);
   }
 }
+
+/** Ver el mismo tope en la ruta de edición: es un freno a un error de carga,
+ *  no una regla del depósito. */
+const MAX_UNIDADES = 1_000_000;
 
 interface CrearRepuestoBody {
   codigo: string;
@@ -45,10 +53,10 @@ function validarBody(body: unknown): CrearRepuestoBody {
     nombre: typeof b.nombre === "string" ? b.nombre : null,
     marcaId: b.marcaId,
     categoria: typeof b.categoria === "string" ? b.categoria : "stock",
-    precioPublico: typeof b.precioPublico === "number" ? b.precioPublico : null,
-    precioCosto: typeof b.precioCosto === "number" ? b.precioCosto : null,
-    stockActual: typeof b.stockActual === "number" ? b.stockActual : 0,
-    stockMinimo: typeof b.stockMinimo === "number" ? b.stockMinimo : 0,
+    precioPublico: numeroSeguro(b.precioPublico, "El precio público"),
+    precioCosto: numeroSeguro(b.precioCosto, "El precio de costo"),
+    stockActual: numeroSeguro(b.stockActual, "El stock", { max: MAX_UNIDADES }) ?? 0,
+    stockMinimo: numeroSeguro(b.stockMinimo, "El stock mínimo", { max: MAX_UNIDADES }) ?? 0,
   };
 }
 
@@ -57,7 +65,7 @@ export async function POST(req: NextRequest) {
     const { usuario: actor } = await usuarioActualDesde(req);
     const body = validarBody(await req.json().catch(() => null));
     const data = await repuestosService.crearRepuesto(actor, body);
-    return NextResponse.json(data);
+    return NextResponse.json(data, { headers: sinCache() });
   } catch (err) {
     return errorResponse(err);
   }

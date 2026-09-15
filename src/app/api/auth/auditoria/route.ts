@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as auditoriaService from "@/services/auditoria.service";
 import { errorResponse, parseIntParamOpcional } from "@/lib/http";
+import { sinCache } from "@/lib/cache";
 import { usuarioActualDesde } from "@/lib/sesion";
 
 export async function GET(req: NextRequest) {
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest) {
     const page = parseIntParamOpcional(searchParams.get("page"), "page") ?? 1;
     const pageSize = parseIntParamOpcional(searchParams.get("pageSize"), "pageSize") ?? 50;
     const data = await auditoriaService.listarAuditoria(actor, page, pageSize);
-    return NextResponse.json(data);
+    return NextResponse.json(data, { headers: sinCache() });
   } catch (err) {
     return errorResponse(err);
   }

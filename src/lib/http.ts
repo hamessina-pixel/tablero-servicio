@@ -36,3 +36,27 @@ export function requireIntParam(raw: string, campo: string): number {
 export function parseBoolParam(raw: string | null): boolean {
   return raw === "true" || raw === "1";
 }
+
+/** Tope de los importes y cantidades que entran por la API. Un número mayor a
+ *  esto no es un precio del taller: es un error de carga o alguien probando
+ *  qué rompe. `Infinity` entra por JSON como `1e400` y hay que frenarlo acá,
+ *  porque una vez guardado arruina todas las cuentas que lo toquen. */
+const TOPE_IMPORTE = 1_000_000_000_000;
+
+/** Número que se puede guardar: finito, no negativo y dentro de un rango
+ *  creíble. Devuelve null si no vino. */
+export function numeroSeguro(
+  valor: unknown,
+  campo: string,
+  opciones: { max?: number; min?: number } = {},
+): number | null {
+  if (valor == null) return null;
+  if (typeof valor !== "number" || !Number.isFinite(valor)) {
+    throw new ValidationError(`${campo} tiene que ser un número`);
+  }
+  const min = opciones.min ?? 0;
+  const max = opciones.max ?? TOPE_IMPORTE;
+  if (valor < min) throw new ValidationError(`${campo} no puede ser menor a ${min}`);
+  if (valor > max) throw new ValidationError(`${campo} es demasiado grande`);
+  return valor;
+}

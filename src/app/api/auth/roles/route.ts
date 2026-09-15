@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as authService from "@/services/auth.service";
 import * as usuariosService from "@/services/usuarios.service";
 import { errorResponse } from "@/lib/http";
+import { sinCache } from "@/lib/cache";
 import { usuarioActualDesde } from "@/lib/sesion";
 import { PERMISOS_CATALOGO } from "@/domain/roles";
 
@@ -24,7 +25,7 @@ export async function PATCH(req: NextRequest) {
     const { usuario: actor } = await usuarioActualDesde(req);
     const body = (await req.json().catch(() => ({}))) as { rol?: string; permisos?: string[] };
     const roles = await usuariosService.actualizarPermisosDeRol(actor, body.rol ?? "", body.permisos ?? []);
-    return NextResponse.json(roles);
+    return NextResponse.json(roles, { headers: sinCache() });
   } catch (err) {
     return errorResponse(err);
   }

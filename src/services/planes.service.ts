@@ -256,7 +256,10 @@ export async function actualizarManoObraVerificada(
   planId: number,
   horas: number | null,
 ) {
-  const usuario = await exigirPermiso(actor, "precios:editar");
+  // Mismo permiso que el resto de lo que se edita de un plan (y que el botón
+  // que llama a esto en la pantalla): antes pedía "precios:editar" y un rol
+  // hecho a mano podía ver el botón y comerse un 403 al guardar.
+  const usuario = await exigirPermiso(actor, "servicios:editar");
   const plan = await planesRepo.buscarPlanPorId(planId);
   if (!plan) throw new NotFoundError("Plan no encontrado");
   if (horas != null && horas <= 0) throw new ValidationError("Las horas deben ser mayores a 0");

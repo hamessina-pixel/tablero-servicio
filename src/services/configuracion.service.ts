@@ -36,6 +36,10 @@ export async function actualizarNombreEmpresa(actor: Usuario | null, nombre: str
  *  lo cambió todavía, las cuentas dan igual que antes. */
 const VALOR_HORA_POR_DEFECTO = 250_000;
 
+/** Techo del valor hora. No es una regla del taller: es para que un cero de
+ *  más al cargarlo no se lleve puesto el precio de todos los services. */
+const MAX_VALOR_HORA = 100_000_000;
+
 export async function valorHora(): Promise<number> {
   const guardado = await repo.leer(CLAVE_VALOR_HORA);
   const n = Number(guardado);
@@ -45,6 +49,7 @@ export async function valorHora(): Promise<number> {
 export async function actualizarValorHora(actor: Usuario | null, valor: number): Promise<number> {
   const usuario = await exigirPermiso(actor, "servicios:editar");
   if (!Number.isFinite(valor) || valor <= 0) throw new ValidationError("El valor de la hora tiene que ser mayor a 0");
+  if (valor > MAX_VALOR_HORA) throw new ValidationError("El valor de la hora es demasiado alto: revisá lo que cargaste");
 
   const anterior = await valorHora();
   await repo.guardar(CLAVE_VALOR_HORA, String(valor), ahoraArgentinaISO());

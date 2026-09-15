@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as repuestosService from "@/services/repuestos.service";
-import { errorResponse, requireIntParam } from "@/lib/http";
+import { errorResponse, numeroSeguro, requireIntParam } from "@/lib/http";
 import { usuarioActualDesde } from "@/lib/sesion";
 
 interface SustitucionBody {
@@ -13,8 +13,8 @@ function validarBody(body: unknown): SustitucionBody {
   const b = (body ?? {}) as Record<string, unknown>;
   const codigoNuevo = typeof b.codigoNuevo === "string" ? b.codigoNuevo : "";
   const out: SustitucionBody = { codigoNuevo };
-  if (typeof b.precioPublico === "number" || b.precioPublico === null) out.precioPublico = b.precioPublico as number | null;
-  if (typeof b.precioCosto === "number" || b.precioCosto === null) out.precioCosto = b.precioCosto as number | null;
+  if (b.precioPublico !== undefined) out.precioPublico = numeroSeguro(b.precioPublico, "El precio público");
+  if (b.precioCosto !== undefined) out.precioCosto = numeroSeguro(b.precioCosto, "El precio de costo");
   return out;
 }
 

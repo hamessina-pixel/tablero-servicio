@@ -192,54 +192,24 @@ export function PlanDetalle({
   }
 
   if (plan.esFlatRate) {
-    const tienePackDesglosado = plan.packRepuestosCosto != null && plan.packManoObraCosto != null;
-    const packRepuestos = adj(plan.packRepuestosCosto || 0);
-    const packManoObra = adj(plan.packManoObraCosto || 0);
-    const packPrice = tienePackDesglosado ? packRepuestos + packManoObra : adj(plan.costoTotal ?? plan.precioSugerido ?? 0);
-    const extraRepuestos = adj(plan.totalRepuestos || 0);
-    const extraFluidos = adj(plan.totalFluidos || 0);
-    const manoObraExtra = adj(plan.manoObraCosto || 0);
-    const tieneExtras = (plan.manoObraHoras || 0) > 0;
-    // La mano de obra global del plan queda afuera: esa estimación la
-    // reemplazan las horas que ahora se cargan repuesto por repuesto, y
-    // dejarla sumaría el mismo trabajo dos veces.
-    const precioPublicado = !tienePackDesglosado && plan.costoTotal != null
-      ? adj(plan.costoTotal) - manoObraExtra + extraRepuestos + extraFluidos + manoObraItems
-      : null;
-    const noPrice = !plan.precioSugerido && precioPublicado == null;
-    const mostrarResumen = tienePackDesglosado || plan.costoTotal != null || extraRepuestos > 0 || extraFluidos > 0 || tieneExtras;
-
-    // Mismo desglose que en los planes normales, para poder comparar en qué se
-    // va la plata entre marcas. Junta lo del pack con lo que se cobra aparte:
-    // al cliente le llega un solo precio, no dos listas.
-    //
-    // Ojo con el pack: la terminal informa un solo número de "repuestos" que
-    // en realidad trae también el aceite (en un CRONOS son $70.352 de filtros
-    // y $42.377 de aceite). Se reparte según lo que pesa cada ítem del pack,
-    // así el aceite figura como fluido y el total sigue dando igual.
-    const sumaBasicos = (filas: ItemDePlanConStock[], basico: (f: ItemDePlanConStock) => boolean) =>
-      filas.filter(basico).reduce((a, f) => a + (f.total ?? 0), 0);
-    const basicoRep = sumaBasicos(plan.repuestos, (r) => esRepuestoBasicoFiat(r.nombre));
-    const basicoFlu = sumaBasicos(plan.fluidos, (f) => !esFluidoExtraFiat(f.nombre, f.producto));
-    const baseDelPack = basicoRep + basicoFlu;
-    const packFluidos = baseDelPack > 0 ? packRepuestos * (basicoFlu / baseDelPack) : 0;
-    const packSoloRepuestos = packRepuestos - packFluidos;
-
-    // Cuando la terminal no publica el desglose (Peugeot, Citroën) se usa el
-    // que se haya cargado a mano: se guardan repuestos y fluidos, y la mano de
-    // obra es lo que sobra del precio publicado.
-    const hayDesgloseManual = plan.desgloseRepuestos != null || plan.desgloseFluidos != null;
-    const precioCerrado = adj(plan.costoTotal ?? plan.precioSugerido ?? 0);
-    const manualRep = adj(plan.desgloseRepuestos ?? 0);
-    const manualFlu = adj(plan.desgloseFluidos ?? 0);
+    const {
+      tienePackDesglosado, packRepuestos, packManoObra, packPrice, packSoloRepuestos, packFluidos,
+      extraRepuestos, extraFluidos, tieneExtras, manoObraAdicional, horasAdicionales,
+      precioPublicado, hayDesgloseManual, precioCerrado, precioCerradoBase, manualRep, manualFlu,
+    } = cuentasFlatRate(plan, adj);
+    const noPrice = precioPublicado == null;
+    const mostrarResumen = tienePackDesglosado || plan.costoTotal != null
+      || extraRepuestos > 0 || extraFluidos > 0 || tieneExtras;
 
     const composicion = tienePackDesglosado
       ? [
         { label: "Repuestos", value: packSoloRepuestos + extraRepuestos, color: "var(--cz-slice-rep)" },
         { label: "Fluidos", value: packFluidos + extraFluidos, color: "var(--cz-slice-flu)" },
         {
-          label: "Mano de obra", value: packManoObra + manoObraItems, color: "var(--cz-slice-mo)",
-          etiqueta: `Mano de obra (${horasDecimal((packManoObra / plan.valorHora) + horasDeItems)})`,
+          label: "Mano de obra", value: packManoObra + manoObraAdicional, color: "var(--cz-slice-mo)",
+          // Las horas salen de los montos SIN ajustar: el ajuste de precio
+          // mueve la plata, no el tiempo que lleva el trabajo.
+          etiqueta: `Mano de obra (${horasDecimal(((plan.packManoObraCosto || 0) / plan.valorHora) + horasAdicionales)})`,
         },
       ]
       : [
@@ -247,10 +217,11 @@ export function PlanDetalle({
         { label: "Fluidos", value: manualFlu + extraFluidos, color: "var(--cz-slice-flu)" },
         {
           label: "Mano de obra",
-          value: Math.max(precioCerrado - manualRep - manualFlu, 0) + manoObraItems,
+          value: Math.max(precioCerrado - manualRep - manualFlu, 0) + manoObraAdicional,
           color: "var(--cz-slice-mo)",
           etiqueta: `Mano de obra (${horasDecimal(
-            (Math.max(precioCerrado - manualRep - manualFlu, 0) / plan.valorHora) + horasDeItems,
+            (Math.max(precioCerradoBase - (plan.desgloseRepuestos ?? 0) - (plan.desgloseFluidos ?? 0), 0)
+              / plan.valorHora) + horasAdicionales,
           )})`,
         },
       ];
@@ -263,7 +234,7 @@ export function PlanDetalle({
     return (
       <div className="flex flex-col gap-4">
         <BotonWhatsApp onClick={noPrice ? undefined : () => window.open(
-          `https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp(plan, marcaNombre, money(precioPublicado != null ? precioPublicado : adj(plan.precioSugerido) - manoObraExtra + manoObraItems)))}`,
+          `https://wa.me/?text=${encodeURIComponent(mensajeWhatsApp(plan, marcaNombre, money(precioPublicado ?? 0)))}`,
           "_blank",
         )} />
         <Aviso texto={avisoTarifaPlana(marcaNombre, plan)} />
@@ -352,8 +323,8 @@ export function PlanDetalle({
                 <>
                   <LineaResumen label={<Tip label="Repuestos del pack c/IVA" texto="Costo de reposición con IVA (21%)" />} valor={money(packRepuestos)} />
                   <LineaResumen
-                    label={<Tip label={`Mano de obra del pack (${horasDecimal(packManoObra / 250000)})`}
-                                texto={`Diferencia entre el precio fijo del pack y el costo de sus repuestos, a ${money(250000)} la hora`} />}
+                    label={<Tip label={`Mano de obra del pack (${horasDecimal((plan.packManoObraCosto || 0) / plan.valorHora)})`}
+                                texto={`Diferencia entre el precio fijo del pack y el costo de sus repuestos, a ${money(plan.valorHora)} la hora`} />}
                     valor={money(packManoObra)}
                   />
                 </>
@@ -366,11 +337,13 @@ export function PlanDetalle({
               {extraFluidos > 0 && (
                 <LineaResumen label={<Tip label="Fluidos adicionales c/IVA" texto="Costo de reposición con IVA (21%)" />} valor={money(extraFluidos)} />
               )}
-              {horasDeItems > 0 && (
+              {manoObraAdicional > 0 && (
                 <LineaResumen
-                  label={<Tip label={`Mano de obra por adicional (${horasDecimal(horasDeItems)})`}
-                              texto={`Horas cargadas en los repuestos que no entran en el pack, a ${money(plan.valorHora)} la hora`} />}
-                  valor={money(manoObraItems)}
+                  label={<Tip label={`Mano de obra por adicional (${horasDecimal(horasAdicionales)})`}
+                              texto={horasDeItems > 0
+                                ? `Horas cargadas en los repuestos que no entran en el pack, a ${money(plan.valorHora)} la hora`
+                                : `Mano de obra del trabajo que no entra en el pack, según el plan. Se reemplaza sola al cargar las horas de cada repuesto`} />}
+                  valor={money(manoObraAdicional)}
                 />
               )}
             </div>
@@ -382,7 +355,7 @@ export function PlanDetalle({
         ) : (
           <TotalRow
             label={<Tip label="Precio del service c/IVA" texto={`Precio final del pack publicado por ${marcaNombre}, con IVA incluido`} />}
-            valor={money(precioPublicado != null ? precioPublicado : adj(plan.precioSugerido) - manoObraExtra + manoObraItems)}
+            valor={money(precioPublicado ?? 0)}
           />
         )}
         <Acciones
@@ -614,7 +587,7 @@ function TablaItems({
                         incluida en el pack
                       </span>
                     ) : (
-                      <ManoObraItem item={f} {...manoObra} />
+                      <ManoObraItem item={f} adj={adj} {...manoObra} />
                     )}
                   </td>
                 )}
@@ -824,10 +797,11 @@ function DesgloseManual({
 /** Horas de taller de una pieza que se cambia aparte del pack. Se carga en
  *  horas y el importe sale de multiplicarlas por el valor hora del taller. */
 function ManoObraItem({
-  item, valorHora, puedeEditar, onGuardar,
+  item, valorHora, adj, puedeEditar, onGuardar,
 }: {
   item: ItemDePlanConStock;
   valorHora: number;
+  adj: (v: number | null | undefined) => number;
   puedeEditar: boolean;
   onGuardar: (itemId: number, horas: number | null) => Promise<void>;
 }) {
@@ -883,7 +857,7 @@ function ManoObraItem({
   return (
     <span className="flex items-center gap-1.5 text-[12px]">
       <span className="font-semibold">{horasDecimal(item.manoObraHoras)}</span>
-      <span className="text-[var(--text-muted)]">{money(item.manoObraHoras * valorHora)}</span>
+      <span className="text-[var(--text-muted)]">{money(adj(item.manoObraHoras * valorHora))}</span>
       {puedeEditar && (
         <button onClick={() => setEditando(true)} className="text-[11px] text-[var(--brand)] hover:underline">editar</button>
       )}
@@ -921,6 +895,73 @@ function TotalRow({ label, valor, tono = "brand" }: { label: React.ReactNode; va
   );
 }
 
+/**
+ * Todas las cuentas de un service de tarifa plana (FIAT con pack, Peugeot y
+ * Citroën con precio cerrado) en un solo lugar. La pantalla, el WhatsApp y el
+ * Excel leen de acá: mientras cada uno rehacía la suma por su cuenta, terminaban
+ * mostrando números distintos del mismo service.
+ */
+function cuentasFlatRate(plan: PlanConDetalle, adj: (v: number | null | undefined) => number) {
+  const tienePackDesglosado = plan.packRepuestosCosto != null && plan.packManoObraCosto != null;
+  const packRepuestos = adj(plan.packRepuestosCosto || 0);
+  const packManoObra = adj(plan.packManoObraCosto || 0);
+  const precioCerradoBase = plan.costoTotal ?? plan.precioSugerido ?? 0;
+  const precioCerrado = adj(precioCerradoBase);
+  const packPrice = tienePackDesglosado ? packRepuestos + packManoObra : precioCerrado;
+  const extraRepuestos = adj(plan.totalRepuestos || 0);
+  const extraFluidos = adj(plan.totalFluidos || 0);
+  const tieneExtras = (plan.manoObraHoras || 0) > 0;
+
+  const horasDeItems = plan.repuestos.reduce((a, r) => a + (r.manoObraHoras ?? 0), 0);
+
+  // Mano de obra del trabajo que no entra en el pack. El plan trae una
+  // estimación global (plan.manoObraCosto) y además se pueden cargar horas
+  // repuesto por repuesto: las horas cargadas REEMPLAZAN a la estimación,
+  // porque son el mismo trabajo contado con más detalle.
+  //
+  // Antes se restaba la estimación siempre, hubiera o no horas cargadas. Como
+  // casi ningún plan tiene horas todavía, el service se cotizaba por debajo del
+  // precio que publica la terminal: en FIAT, $125.000 menos en 45 planes.
+  const manoObraAdicional = horasDeItems > 0
+    ? adj(horasDeItems * plan.valorHora)
+    : adj(plan.manoObraCosto || 0);
+  const horasAdicionales = horasDeItems > 0
+    ? horasDeItems
+    : (plan.manoObraCosto || 0) / plan.valorHora;
+
+  // El precio sale de sumar sus partes, así el total, el resumen y la dona no
+  // pueden discrepar. Verificado contra la base: en los 210 planes con pack,
+  // pack + extras + mano de obra da exactamente el precio_sugerido cargado.
+  const precioPublicado = tienePackDesglosado || plan.costoTotal != null || plan.precioSugerido != null
+    ? packPrice + extraRepuestos + extraFluidos + manoObraAdicional
+    : null;
+
+  // Ojo con el pack: la terminal informa un solo número de "repuestos" que en
+  // realidad trae también el aceite (en un CRONOS son $70.352 de filtros y
+  // $42.377 de aceite). Se reparte según lo que pesa cada ítem del pack, así el
+  // aceite figura como fluido y el total sigue dando igual.
+  const sumaBasicos = (filas: ItemDePlanConStock[], basico: (f: ItemDePlanConStock) => boolean) =>
+    filas.filter(basico).reduce((a, f) => a + (f.total ?? 0), 0);
+  const basicoRep = sumaBasicos(plan.repuestos, (r) => esRepuestoBasicoFiat(r.nombre));
+  const basicoFlu = sumaBasicos(plan.fluidos, (f) => !esFluidoExtraFiat(f.nombre, f.producto));
+  const baseDelPack = basicoRep + basicoFlu;
+  const packFluidos = baseDelPack > 0 ? packRepuestos * (basicoFlu / baseDelPack) : 0;
+  const packSoloRepuestos = packRepuestos - packFluidos;
+
+  // Cuando la terminal no publica el desglose (Peugeot, Citroën) se usa el que
+  // se haya cargado a mano: se guardan repuestos y fluidos, y la mano de obra es
+  // lo que sobra del precio publicado.
+  const hayDesgloseManual = plan.desgloseRepuestos != null || plan.desgloseFluidos != null;
+  const manualRep = adj(plan.desgloseRepuestos ?? 0);
+  const manualFlu = adj(plan.desgloseFluidos ?? 0);
+
+  return {
+    tienePackDesglosado, packRepuestos, packManoObra, packPrice, packSoloRepuestos, packFluidos,
+    extraRepuestos, extraFluidos, tieneExtras, horasDeItems, manoObraAdicional, horasAdicionales,
+    precioPublicado, hayDesgloseManual, precioCerrado, precioCerradoBase, manualRep, manualFlu,
+  };
+}
+
 function exportarExcelCotizacion(
   plan: PlanConDetalle,
   marcaNombre: string,
@@ -931,20 +972,67 @@ function exportarExcelCotizacion(
     (original && elegidos[original]?.codigo) || original || "";
   const reemplaza = (original: string | null | undefined) =>
     original && elegidos[original] ? original : "";
+  const texto = (v: string | null | undefined) => v ?? "";
+
+  // En tarifa plana los básicos ya están adentro del pack: si el Excel los
+  // lista con su costo al lado, sumar la columna da un número que no es el
+  // precio cotizado. Se marcan, y al final va el mismo resumen que la pantalla.
+  const enElPack = (esBasico: boolean) => (plan.esFlatRate && esBasico ? "Incluido en el pack" : "");
+  const cuentas = plan.esFlatRate ? cuentasFlatRate(plan, adj) : null;
 
   import("xlsx").then((XLSX) => {
+    const fila = (
+      tipo: string, nombre: string, codigo: string, reemplazaA: string,
+      cantidad: number | string, total: number | string, nota: string,
+    ) => ({
+      Tipo: tipo, Nombre: nombre, Código: codigo, "Reemplaza a": reemplazaA,
+      Cantidad: cantidad, "Total c/IVA": total, Nota: nota,
+    });
+
     const filas = [
-      ...plan.repuestos.map((r) => ({
-        Tipo: "Repuesto", Nombre: r.nombre, Código: codigoFinal(r.codigo), "Reemplaza a": reemplaza(r.codigo),
-        Cantidad: r.cantidad,
-        "Total c/IVA": r.total != null ? adj(r.total) : "",
-      })),
-      ...plan.fluidos.map((f) => ({
-        Tipo: "Fluido", Nombre: f.nombre, Código: codigoFinal(f.producto), "Reemplaza a": reemplaza(f.producto),
-        Cantidad: f.litros ?? "",
-        "Total c/IVA": f.total != null ? adj(f.total) : "",
-      })),
+      ...plan.repuestos.map((r) => {
+        const basico = esRepuestoBasicoFiat(r.nombre);
+        return fila(
+          "Repuesto", texto(r.nombre), codigoFinal(r.codigo), reemplaza(r.codigo), r.cantidad ?? "",
+          plan.esFlatRate && basico ? "" : (r.total != null ? adj(r.total) : ""),
+          enElPack(basico),
+        );
+      }),
+      ...plan.fluidos.map((f) => {
+        const basico = !esFluidoExtraFiat(f.nombre, f.producto);
+        return fila(
+          "Fluido", texto(f.nombre), codigoFinal(f.producto), reemplaza(f.producto), f.litros ?? "",
+          plan.esFlatRate && basico ? "" : (f.total != null ? adj(f.total) : ""),
+          enElPack(basico),
+        );
+      }),
     ];
+
+    if (cuentas) {
+      filas.push(fila("", "", "", "", "", "", ""));
+      if (cuentas.tienePackDesglosado) {
+        filas.push(fila("Resumen", "Repuestos del pack c/IVA", "", "", "", cuentas.packRepuestos, ""));
+        filas.push(fila("Resumen", "Mano de obra del pack", "", "", "", cuentas.packManoObra, ""));
+      } else {
+        filas.push(fila("Resumen", "Pack (aceite de motor + filtros)", "", "", "", cuentas.packPrice, ""));
+      }
+      if (cuentas.extraRepuestos > 0) filas.push(fila("Resumen", "Repuestos adicionales c/IVA", "", "", "", cuentas.extraRepuestos, ""));
+      if (cuentas.extraFluidos > 0) filas.push(fila("Resumen", "Fluidos adicionales c/IVA", "", "", "", cuentas.extraFluidos, ""));
+      if (cuentas.manoObraAdicional > 0) {
+        filas.push(fila("Resumen", "Mano de obra por adicional", "", "", horasDecimal(cuentas.horasAdicionales), cuentas.manoObraAdicional, ""));
+      }
+      filas.push(fila("TOTAL", "Precio del service c/IVA", "", "", "", cuentas.precioPublicado ?? "A confirmar", ""));
+    } else {
+      const total = adj(plan.totalRepuestos || 0) + adj(plan.totalFluidos || 0)
+        + adj(plan.manoObraCosto || 0)
+        + adj(plan.repuestos.reduce((a, r) => a + (r.manoObraHoras ?? 0), 0) * plan.valorHora);
+      filas.push(fila("", "", "", "", "", "", ""));
+      filas.push(fila("TOTAL", "Costo total c/IVA", "", "", "", total, ""));
+      if (plan.precioSugerido != null) {
+        filas.push(fila("TOTAL", "Precio sugerido c/IVA", "", "", "", adj(plan.precioSugerido), ""));
+      }
+    }
+
     const ws = XLSX.utils.json_to_sheet(filas);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Cotización");
