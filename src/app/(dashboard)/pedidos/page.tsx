@@ -11,12 +11,16 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 import { InputBusqueda } from "@/components/ui/InputBusqueda";
+import { Paginacion } from "@/components/ui/Paginacion";
 import { money } from "@/lib/format";
 
 interface StockBajoItem {
   id: number; codigo: string; nombre: string | null; marcaId: number | null; marcaNombre: string | null;
   stockActual: number | null; stockMinimo: number | null; precioPublico: number | null;
 }
+/** Cuántos faltantes se listan por página. */
+const POR_PAGINA = 25;
+
 interface PedidoResumen { id: number; fecha: string; nota: string | null; nItems: number; valorTotal: number; }
 interface PedidoItem {
   codigo: string | null; nombre: string | null; marcaNombre: string | null;
@@ -35,7 +39,7 @@ export default function PedidosPage() {
 function PedidosPageInner() {
   const searchParams = useSearchParams();
   const { marcas } = useMarcas();
-  const { requirePermiso } = useAuth();
+  const { requirePermiso, usuario } = useAuth();
   const toast = useToast();
   const [marcaId, setMarcaId] = useState<number | undefined>(() => {
     const v = Number(searchParams.get("marcaId"));
@@ -43,6 +47,7 @@ function PedidosPageInner() {
   });
   const [stockBajo, setStockBajo] = useState<StockBajoItem[]>([]);
   const [qStockBajo, setQStockBajo] = useState("");
+  const [pagStock, setPagStock] = useState(1);
   const [listaCompra, setListaCompra] = useState<StockBajoItem[]>([]);
   const [pedidos, setPedidos] = useState<PedidoResumen[]>([]);
   const [generando, setGenerando] = useState(false);
@@ -55,9 +60,11 @@ function PedidosPageInner() {
   function recargarListaCompra() { api.pedidos.listaCompra(marcaId).then((d) => setListaCompra(d as StockBajoItem[])); }
   function recargarPedidos() { api.pedidos.listar().then((d) => setPedidos(d as PedidoResumen[])); }
 
-  useEffect(recargarStockBajo, [marcaId]);
-  useEffect(recargarListaCompra, [marcaId]);
-  useEffect(recargarPedidos, []);
+  // Se recarga al entrar o salir: el listado de faltantes pide sesión, y quien
+  // se loguea desde acá se quedaba con la tabla vacía hasta refrescar a mano.
+  useEffect(recargarStockBajo, [marcaId, usuario?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(recargarListaCompra, [marcaId, usuario?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(recargarPedidos, [usuario?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const idsEnLista = useMemo(() => new Set(listaCompra.map((r) => r.id)), [listaCompra]);
 
@@ -68,6 +75,15 @@ function PedidosPageInner() {
       r.codigo?.toLowerCase().includes(texto) || r.nombre?.toLowerCase().includes(texto),
     );
   }, [stockBajo, qStockBajo]);
+
+  const totalPaginasStock = Math.max(Math.ceil(stockBajoFiltrado.length / POR_PAGINA), 1);
+  const stockBajoPagina = useMemo(
+    () => stockBajoFiltrado.slice((pagStock - 1) * POR_PAGINA, pagStock * POR_PAGINA),
+    [stockBajoFiltrado, pagStock],
+  );
+  // Al buscar o al cambiar el stock, la página en la que se estaba puede ya no
+  // existir: se vuelve a la primera.
+  useEffect(() => setPagStock(1), [qStockBajo, stockBajo.length]);
 
   async function agregar(repuestoId: number) {
     if (!(await requirePermiso("pedidos:crear"))) return;
@@ -206,7 +222,7 @@ function PedidosPageInner() {
               </tr>
             </thead>
             <tbody>
-              {stockBajoFiltrado.map((r) => (
+              {stockBajoPagina.map((r) => (
                 <tr key={r.id} className="border-b border-[var(--border)] last:border-0">
                   <td className="py-2 pr-2">{r.marcaNombre}</td>
                   <td className="py-2 pr-2 font-mono">{r.codigo}</td>
@@ -229,6 +245,17 @@ function PedidosPageInner() {
             </tbody>
           </table>
         </div>
+        {stockBajoFiltrado.length > 0 && (
+          <div className="mt-3 border-t border-[var(--border)] pt-3">
+            <Paginacion
+              page={pagStock}
+              totalPaginas={totalPaginasStock}
+              onCambiar={setPagStock}
+              totalItems={stockBajoFiltrado.length}
+              etiquetaItems="con stock bajo"
+            />
+          </div>
+        )}
       </Card>
 
       <Card>

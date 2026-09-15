@@ -7,6 +7,7 @@ import { useMarcas } from "@/components/MarcasProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { useToast } from "@/components/Toast";
 import { Card } from "@/components/ui/Card";
+import { Paginacion } from "@/components/ui/Paginacion";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
@@ -164,13 +165,8 @@ function RepuestosPageInner() {
             </tbody>
           </table>
         </div>
-        <div className="flex items-center justify-between border-t border-[var(--border)] px-4 py-3 text-[12.5px] text-[var(--text-muted)]">
-          <span>{total.toLocaleString("es-AR")} resultados</span>
-          <div className="flex items-center gap-2">
-            <Button tamano="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Anterior</Button>
-            <span>Página {page} de {totalPaginas}</span>
-            <Button tamano="sm" disabled={page >= totalPaginas} onClick={() => setPage((p) => p + 1)}>Siguiente</Button>
-          </div>
+        <div className="border-t border-[var(--border)] px-4 py-3">
+          <Paginacion page={page} totalPaginas={totalPaginas} onCambiar={setPage} totalItems={total} />
         </div>
       </Card>
 
