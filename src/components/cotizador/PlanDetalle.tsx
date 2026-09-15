@@ -288,6 +288,7 @@ export function PlanDetalle({
             elegidos={elegidos}
             onElegir={elegir}
             manoObra={manoObra}
+            asignar={{ marcaId: plan.marcaId, marcaNombre, onGuardado: onPlanActualizado }}
           />
         </Card>
         <Card>
@@ -537,7 +538,7 @@ function precioCelda(basico: boolean, total: number | null, adj: (v: number | nu
 }
 
 function TablaItems({
-  filas, campoCodigo, esBasico, adj, elegidos, onElegir, manoObra,
+  filas, campoCodigo, esBasico, adj, elegidos, onElegir, manoObra, asignar,
 }: {
   filas: ItemDePlanConStock[];
   campoCodigo: "codigo" | "producto";
@@ -546,6 +547,7 @@ function TablaItems({
   elegidos?: Record<string, StockDeCodigo>;
   onElegir?: (codigoOriginal: string, equivalente: StockDeCodigo | null) => void;
   manoObra?: { valorHora: number; puedeEditar: boolean; onGuardar: (itemId: number, horas: number | null) => Promise<void> };
+  asignar?: { marcaId: number; marcaNombre: string; onGuardado?: () => void };
 }) {
   if (!filas.length) {
     return <p className="py-2 text-[13px] text-[var(--text-muted)]">No requiere {campoCodigo === "codigo" ? "repuestos" : "fluidos"}.</p>;
@@ -580,12 +582,18 @@ function TablaItems({
                       </span>
                     </span>
                   ) : (codigo || (
-                    <span
-                      title={campoCodigo === "codigo"
-                        ? "La marca publica este service como precio cerrado: informa qué se cambia, no con qué número de pieza"
-                        : "El plan no nombra el producto; el aceite que corresponde a este modelo está en el recuadro de Lubricación, más abajo"}
-                    >
-                      {campoCodigo === "codigo" ? "sin código de la marca" : "ver Lubricación recomendada"}
+                    <span className="flex flex-col gap-0.5">
+                      <span
+                        title={campoCodigo === "codigo"
+                          ? "La marca publica este service como precio cerrado: informa qué se cambia, no con qué número de pieza"
+                          : "El plan no nombra el producto; el aceite que corresponde a este modelo está en el recuadro de Lubricación, más abajo"}
+                      >
+                        {campoCodigo === "codigo" ? "sin código de la marca" : "ver Lubricación recomendada"}
+                      </span>
+                      {campoCodigo === "codigo" && asignar && (
+                        <AsignarCodigo item={f} marcaId={asignar.marcaId} marcaNombre={asignar.marcaNombre}
+                                       onGuardado={asignar.onGuardado} />
+                      )}
                     </span>
                   ))}
                   {codigo && (
@@ -616,6 +624,101 @@ function TablaItems({
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/** Busca en el catálogo de la marca la pieza que corresponde a un ítem del
+ *  plan que vino sin número. Lo que se elige queda para todos los intervalos
+ *  del mismo modelo. */
+function AsignarCodigo({
+  item, marcaId, marcaNombre, onGuardado,
+}: {
+  item: ItemDePlanConStock;
+  marcaId: number;
+  marcaNombre: string;
+  onGuardado?: () => void;
+}) {
+  const toast = useToast();
+  const { requirePermiso } = useAuth();
+  const [abierto, setAbierto] = useState(false);
+  const [q, setQ] = useState("");
+  const [resultados, setResultados] = useState<{ id: number; codigo: string; nombre: string | null }[]>([]);
+  const [buscando, setBuscando] = useState(false);
+
+  useEffect(() => {
+    if (!abierto || q.trim().length < 2) { setResultados([]); return; }
+    let vivo = true;
+    setBuscando(true);
+    const t = setTimeout(() => {
+      api.repuestos.listar({ marcaId, q: q.trim(), pageSize: 8 })
+        .then((r) => { if (vivo) setResultados(r.items.map((i) => ({ id: i.id, codigo: i.codigo, nombre: i.nombre }))); })
+        .finally(() => { if (vivo) setBuscando(false); });
+    }, 300);
+    return () => { vivo = false; clearTimeout(t); };
+  }, [q, abierto, marcaId]);
+
+  async function asignar(codigo: string | null) {
+    if (!(await requirePermiso("servicios:editar"))) return;
+    try {
+      const r = await api.planes.asignarCodigoAItem(item.itemId!, codigo);
+      toast(codigo ? `Asignado en ${r.afectados} services de este modelo` : "Código quitado", "success");
+      setAbierto(false);
+      setQ("");
+      onGuardado?.();
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "No se pudo asignar", "error");
+    }
+  }
+
+  if (item.itemId == null) return null;
+
+  if (!abierto) {
+    return (
+      <button onClick={() => setAbierto(true)} className="no-print text-[11.5px] text-[var(--brand)] hover:underline">
+        asignar código
+      </button>
+    );
+  }
+
+  return (
+    <div className="no-print mt-1 w-[260px] rounded-[var(--radius-sm)] border border-[var(--border-strong)] bg-[var(--surface)] p-2">
+      <p className="mb-1.5 text-[11px] text-[var(--text-muted)]">
+        Buscá el {item.nombre?.toLowerCase()} en el catálogo {marcaNombre}. Se usa en todos los services de este modelo.
+      </p>
+      <Input
+        autoFocus
+        className="!py-1 !text-[12px]"
+        placeholder="Código o nombre…"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+      />
+      <div className="mt-1.5 max-h-40 overflow-y-auto">
+        {buscando && <p className="py-1 text-[11px] text-[var(--text-muted)]">Buscando…</p>}
+        {!buscando && q.trim().length >= 2 && resultados.length === 0 && (
+          <p className="py-1 text-[11px] text-[var(--text-muted)]">Sin resultados en {marcaNombre}.</p>
+        )}
+        {resultados.map((r) => (
+          <button
+            key={r.id}
+            onClick={() => asignar(r.codigo)}
+            className="block w-full rounded-[4px] px-1.5 py-1 text-left text-[11.5px] hover:bg-[var(--surface-2)]"
+          >
+            <span className="font-mono font-semibold">{r.codigo}</span>
+            <span className="block truncate text-[10.5px] text-[var(--text-muted)]">{r.nombre}</span>
+          </button>
+        ))}
+      </div>
+      <div className="mt-1.5 flex gap-2">
+        <button onClick={() => setAbierto(false)} className="text-[11px] text-[var(--text-muted)] hover:underline">
+          cancelar
+        </button>
+        {item.codigo && (
+          <button onClick={() => asignar(null)} className="text-[11px] text-[var(--status-critical)] hover:underline">
+            quitar código
+          </button>
+        )}
+      </div>
     </div>
   );
 }

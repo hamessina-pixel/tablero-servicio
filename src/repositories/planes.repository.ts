@@ -162,6 +162,33 @@ export async function actualizarManoObraDeItem(itemId: number, horas: number | n
   return row;
 }
 
+/**
+ * Asigna el código de catálogo a un ítem del plan y a los del mismo nombre en
+ * el resto de los intervalos del mismo modelo: el filtro de aceite de un auto
+ * es el mismo en el service de 10.000 y en el de 100.000, así que cargarlo una
+ * vez alcanza.
+ */
+export async function asignarCodigoAItemsDelModelo(
+  modeloId: number,
+  nombreItem: string,
+  codigo: string | null,
+  repuestoId: number | null,
+) {
+  const filas = await db
+    .update(planRepuestos)
+    .set({ codigo, repuestoId })
+    .where(
+      and(
+        eq(planRepuestos.nombre, nombreItem),
+        sql`${planRepuestos.planId} IN (
+          SELECT id FROM ${planesMantenimiento} WHERE modelo_id = ${modeloId}
+        )`,
+      ),
+    )
+    .returning({ id: planRepuestos.id });
+  return filas.length;
+}
+
 export async function buscarItemDePlan(itemId: number) {
   const [row] = await db.select().from(planRepuestos).where(eq(planRepuestos.id, itemId)).limit(1);
   return row;

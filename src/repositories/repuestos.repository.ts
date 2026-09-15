@@ -164,6 +164,7 @@ export async function buscarStockPorMarcaYCodigo(marcaId: number | null, codigo:
   if (marcaId == null) return undefined;
   const [row] = await db
     .select({
+      id: repuestos.id,
       esStockGestionado: repuestos.esStockGestionado,
       stockActual: repuestos.stockActual,
       stockMinimo: repuestos.stockMinimo,

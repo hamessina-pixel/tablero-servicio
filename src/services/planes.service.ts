@@ -168,6 +168,49 @@ export async function actualizarManoObraDeItem(
 }
 
 /**
+ * Vincula un ítem del plan con una pieza del catálogo. Hace falta en las
+ * marcas que publican el service diciendo qué se cambia pero no con qué número
+ * de pieza: sin el código no se puede mostrar el stock ni el precio real.
+ *
+ * Se aplica a todos los intervalos del mismo modelo, porque el filtro de
+ * aceite de un auto no cambia entre el service de 10.000 y el de 100.000.
+ */
+export async function asignarCodigoAItem(
+  actor: Usuario | null,
+  itemId: number,
+  codigo: string | null,
+) {
+  const usuario = await exigirPermiso(actor, "servicios:editar");
+  const item = await planesRepo.buscarItemDePlan(itemId);
+  if (!item) throw new NotFoundError("Repuesto del plan no encontrado");
+  if (!item.nombre) throw new ValidationError("Este ítem no tiene nombre: no se puede aplicar al resto del modelo");
+
+  const plan = await planesRepo.buscarPlanPorId(item.planId);
+  if (!plan) throw new NotFoundError("Plan no encontrado");
+
+  let repuestoId: number | null = null;
+  if (codigo) {
+    // El código tiene que existir en el catálogo de la marca del plan: si no,
+    // se estaría guardando un número que después no muestra ni stock ni precio.
+    const enCatalogo = await repuestosRepo.buscarStockPorMarcaYCodigo(plan.marcaId, codigo);
+    if (!enCatalogo) {
+      throw new ValidationError(`El código ${codigo} no está en el catálogo de ${plan.marcaNombre}`);
+    }
+    repuestoId = enCatalogo.id;
+  }
+
+  const afectados = await planesRepo.asignarCodigoAItemsDelModelo(
+    plan.modeloId, item.nombre, codigo, repuestoId,
+  );
+  await auditoriaRepo.registrar({
+    usuarioId: usuario.id, accion: "editar", entidad: "plan", entidadId: item.planId,
+    detalle: `"${item.nombre}" de ${plan.modeloNombre}: código ${codigo ?? "sin asignar"} (${afectados} services)`,
+    fecha: ahoraArgentinaISO(),
+  });
+  return { afectados };
+}
+
+/**
  * Desglose cargado a mano para los services que la terminal publica con un
  * precio único (Peugeot, Citroën). Se cargan repuestos y fluidos; la mano de
  * obra sale por diferencia contra el precio publicado, así el total no cambia.
