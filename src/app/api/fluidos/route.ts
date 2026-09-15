@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as fluidosService from "@/services/fluidos.service";
 import { errorResponse } from "@/lib/http";
+import { cacheCompartido } from "@/lib/cache";
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,7 +10,7 @@ export async function GET(req: NextRequest) {
       q: searchParams.get("q") ?? undefined,
       categoria: searchParams.get("categoria") ?? undefined,
     });
-    return NextResponse.json(data);
+    return NextResponse.json(data, { headers: cacheCompartido(300) });
   } catch (err) {
     return errorResponse(err);
   }

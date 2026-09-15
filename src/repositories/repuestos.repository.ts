@@ -60,12 +60,14 @@ export async function listarRepuestos(filtros: FiltrosRepuestos = {}) {
 
   const where = condiciones.length ? and(...condiciones) : undefined;
 
-  const [{ total }] = await db
+  // El total y la página se piden a la vez: son independientes, y en serie se
+  // pagaba dos veces la ida y vuelta a la base.
+  const [[{ total }], items] = await Promise.all([
+    db
     .select({ total: sql<number>`count(*)`.mapWith(Number) })
     .from(repuestos)
-    .where(where);
-
-  const items = await db
+    .where(where),
+    db
     .select({
       id: repuestos.id,
       codigo: repuestos.codigo,
@@ -88,7 +90,8 @@ export async function listarRepuestos(filtros: FiltrosRepuestos = {}) {
     .where(where)
     .orderBy(desc(repuestos.esStockGestionado), asc(repuestos.nombre))
     .limit(pageSize)
-    .offset(offset);
+    .offset(offset),
+  ]);
 
   return { items, total, page, pageSize };
 }

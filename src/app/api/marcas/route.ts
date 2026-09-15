@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as marcasService from "@/services/marcas.service";
 import { errorResponse, parseBoolParam } from "@/lib/http";
+import { cacheCompartido } from "@/lib/cache";
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,7 +10,7 @@ export async function GET(req: NextRequest) {
       conModelos: parseBoolParam(searchParams.get("conModelos")),
       incluirInactivas: parseBoolParam(searchParams.get("incluirInactivas")),
     });
-    return NextResponse.json(data);
+    return NextResponse.json(data, { headers: cacheCompartido(300) });
   } catch (err) {
     return errorResponse(err);
   }

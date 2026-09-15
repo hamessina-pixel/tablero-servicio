@@ -38,12 +38,13 @@ export async function listarSustituciones(filtros: {
   if (filtros.marcaId !== undefined) condiciones.push(eq(sustituciones.marcaId, filtros.marcaId));
   const where = condiciones.length ? and(...condiciones) : undefined;
 
-  const [{ total }] = await db
+  // Total y página en paralelo: en serie se esperaba dos veces a la base.
+  const [[{ total }], items] = await Promise.all([
+    db
     .select({ total: sql<number>`count(*)`.mapWith(Number) })
     .from(sustituciones)
-    .where(where);
-
-  const items = await db
+    .where(where),
+    db
     .select({
       id: sustituciones.id,
       marcaId: sustituciones.marcaId,
@@ -60,7 +61,8 @@ export async function listarSustituciones(filtros: {
     .where(where)
     .orderBy(asc(sustituciones.id))
     .limit(pageSize)
-    .offset(offset);
+    .offset(offset),
+  ]);
 
   return { items, total, page, pageSize };
 }

@@ -44,36 +44,44 @@ export async function resumenDashboard() {
     contarFilas("sustituciones"),
   ]);
 
-  const { rows: valorRows } = await db.execute(sql`
+  // Todo lo que sigue se pide junto, no una consulta atrás de otra: la base
+  // está en la nube y cada ida y vuelta cuesta ~170 ms, así que en serie el
+  // panel tardaba más en esperar que en calcular.
+  const [
+    { rows: valorRows },
+    { rows: valorPorMarca },
+    { rows: porMarca },
+    { rows: modelosPorMarca },
+    { rows: topCostoKm },
+    { rows: pendientes },
+    { rows: ultimasCotizaciones },
+    { rows: criticos },
+  ] = await Promise.all([
+    db.execute(sql`
     SELECT COALESCE(SUM(stock_actual * precio_costo), 0) AS v
       FROM repuestos
      WHERE es_stock_gestionado = true AND stock_ficticio = false
        AND stock_actual > 0 AND precio_costo > 0
-  `);
-  const valorStockGestionado = Number(valorRows[0].v);
-
-  const { rows: valorPorMarca } = await db.execute(sql`
+  `),
+    db.execute(sql`
     SELECT ma.nombre AS marca, COALESCE(SUM(r.stock_actual * r.precio_costo), 0) AS valor
       FROM marcas ma LEFT JOIN repuestos r
         ON r.marca_id = ma.id AND r.es_stock_gestionado = true AND r.stock_ficticio = false
            AND r.stock_actual > 0 AND r.precio_costo > 0
      GROUP BY ma.id, ma.nombre
      ORDER BY valor DESC
-  `);
-
-  const { rows: porMarca } = await db.execute(sql`
+  `),
+    db.execute(sql`
     SELECT ma.nombre AS marca, COUNT(r.id)::int AS repuestos
       FROM marcas ma LEFT JOIN repuestos r ON r.marca_id = ma.id
      GROUP BY ma.id, ma.nombre ORDER BY ma.nombre
-  `);
-
-  const { rows: modelosPorMarca } = await db.execute(sql`
+  `),
+    db.execute(sql`
     SELECT ma.nombre AS marca, COUNT(mo.id)::int AS modelos
       FROM marcas ma LEFT JOIN modelos mo ON mo.marca_id = ma.id
      GROUP BY ma.id, ma.nombre ORDER BY ma.nombre
-  `);
-
-  const { rows: topCostoKm } = await db.execute(sql`
+  `),
+    db.execute(sql`
     SELECT mo.nombre AS modelo, ma.nombre AS marca,
            AVG(pm.costo_total * 1.0 / NULLIF(pm.km_intervalo, 0)) AS costo_por_km
       FROM planes_mantenimiento pm
@@ -83,31 +91,31 @@ export async function resumenDashboard() {
      GROUP BY mo.id, mo.nombre, ma.nombre
      ORDER BY costo_por_km DESC
      LIMIT 8
-  `);
-
-  // Lo que hay que hacer hoy: piezas ya marcadas para comprar, cuentas
-  // esperando aprobación y las últimas cotizaciones del taller.
-  const { rows: pendientes } = await db.execute(sql`
+  `),
+    // Lo que hay que hacer hoy: piezas ya marcadas para comprar, cuentas
+    // esperando aprobación y las últimas cotizaciones del taller.
+    db.execute(sql`
     SELECT
       (SELECT COUNT(*)::int FROM lista_compra)                                    AS en_lista_compra,
       (SELECT COUNT(*)::int FROM usuarios WHERE pendiente = true)                 AS cuentas_pendientes,
       (SELECT COUNT(*)::int FROM cotizaciones_guardadas
         WHERE creado_en >= ${new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 19)}) AS cotizaciones_mes
-  `);
-
-  const { rows: ultimasCotizaciones } = await db.execute(sql`
+  `),
+    db.execute(sql`
     SELECT id, marca_nombre AS marca, modelo_nombre AS modelo, km, patente, cliente, total, creado_en
       FROM cotizaciones_guardadas ORDER BY creado_en DESC LIMIT 6
-  `);
-
-  const { rows: criticos } = await db.execute(sql`
+  `),
+    db.execute(sql`
     SELECT ma.nombre AS marca, r.codigo, r.nombre, r.stock_actual, r.stock_minimo
       FROM repuestos r JOIN marcas ma ON ma.id = r.marca_id
      WHERE r.es_stock_gestionado = true AND r.stock_ficticio = false
        AND r.stock_actual < r.stock_minimo
      ORDER BY (r.stock_minimo - r.stock_actual) DESC
      LIMIT 6
-  `);
+  `),
+  ]);
+
+  const valorStockGestionado = Number(valorRows[0].v);
 
   return {
     marcas: marcasVehiculos,
